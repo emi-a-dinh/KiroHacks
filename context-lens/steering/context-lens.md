@@ -2,28 +2,32 @@
 inclusion: auto
 ---
 
-# Context Lens — Usage Guidelines
+# Context Lens — Agent Instructions
 
-When working with code in a repository, use Context Lens to minimize token usage:
+You have access to Context Lens, which automatically indexes the codebase and selects relevant code for any task.
 
-1. **Index first.** Call `context_index` with the workspace root path if:
-   - No index exists yet (`.context-lens/index.db` is missing)
-   - The user explicitly asks to re-index
-   - You suspect files have changed significantly since the last index
+## When the user describes a task
 
-2. **Query for tasks.** When the user describes a task involving code (fixing a bug, 
-   adding a feature, understanding a function), call `context_query` with the task 
-   description to get the signature map. This shows every function and class with 
-   their call relationships.
+1. **Bug fix or implementation** → Call `lens_fix` with the task description.
+   The tool will auto-index, select relevant code (including tests and call graph neighbors), and return structured context with fix instructions.
 
-3. **Expand selectively.** Review the signature map and call `context_expand` with 
-   only the most relevant unit IDs. Use `include_neighbors: true` if the task 
-   involves tracing a bug through multiple functions or understanding how a 
-   function is used.
+2. **Question about the codebase** → Call `lens_ask` with the question.
+   Returns relevant code with explanation instructions. No edits.
 
-4. **Avoid full file reads.** Use the expanded code as context for your response. 
-   Do not read full files unless the signature map indicates the entire file is 
-   relevant or the user explicitly asks for it.
+3. **Multi-step or unclear task** → Call `lens_plan` with the task description.
+   Returns relevant code with a planning prompt. No edits until the user confirms.
 
-This keeps token usage low and responses fast. A typical task needs 10-15k tokens 
-of context instead of 150-200k.
+## After receiving lens_fix output
+
+1. Read the selected code and instructions.
+2. Implement the fix in the relevant files.
+3. Run tests if a test runner is available.
+4. Summarize what changed.
+
+## Rules
+
+- **Do not read entire files** unless the lens output is clearly insufficient.
+- **Do not manually search** the repo before calling lens.
+- **Prefer minimal context** — only use the code returned by Context Lens.
+- If the selection confidence is "low", expand additional related units before proceeding.
+- If the user provides an error log, pass it via the `error_log` parameter.

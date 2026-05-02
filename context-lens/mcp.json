@@ -4,7 +4,7 @@
       "command": "python",
       "args": ["${powerPath}/src/mcp_server.py"],
       "disabled": false,
-      "autoApprove": ["context_index", "context_query", "context_expand"]
+      "autoApprove": ["lens_fix", "lens_ask", "lens_plan"]
     }
   }
 }

@@ -1,0 +1,13 @@
+{
+  "name": "Lens: Re-index on delete",
+  "version": "1.0.0",
+  "description": "Re-indexes the codebase when a source file is deleted so stale units and edges are removed.",
+  "when": {
+    "type": "fileDeleted",
+    "patterns": ["**/*.py", "**/*.js", "**/*.ts", "**/*.tsx", "**/*.jsx", "**/*.go", "**/*.rs", "**/*.java", "**/*.rb", "**/*.php", "**/*.c", "**/*.cpp", "**/*.h", "**/*.hpp"]
+  },
+  "then": {
+    "type": "runCommand",
+    "command": "python context-lens/src/cli.py index ."
+  }
+}

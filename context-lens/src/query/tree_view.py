@@ -247,7 +247,7 @@ def build_tree_view(
     lines.append("")
 
     # ── Summary footer ────────────────────────────────────────────────────────
-    lines.append(grey("  Use 'context-lens expand <ids>' to see full code for any unit."))
-    lines.append(grey("  Use 'context-lens query \"<task>\"' to get a task-focused selection prompt."))
+    lines.append(grey("  Use 'lens expand <ids>' to see full code for any unit."))
+    lines.append(grey("  Use 'lens prompt \"<task>\"' to get a task-focused selection prompt."))
 
     return "\n".join(lines)

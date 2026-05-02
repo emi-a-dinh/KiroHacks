@@ -5,6 +5,8 @@ import os
 from pathlib import Path
 from typing import Dict, List, Set, Tuple
 
+from typing import Dict, List, Set, Tuple, Optional
+
 from .models import FileInfo
 
 # Directories to skip
@@ -63,7 +65,7 @@ def compute_file_hash(file_path: Path) -> str:
     return hasher.hexdigest()
 
 
-def detect_language(file_path: Path) -> str | None:
+def detect_language(file_path: Path) -> Optional[str]:
     """Detect language from file extension."""
     return SOURCE_EXTENSIONS.get(file_path.suffix.lower())
 

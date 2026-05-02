@@ -2,12 +2,12 @@
 
 import ast
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Union
 
-from indexer.models import CodeUnit
+from .models import CodeUnit
 
 
-def _get_signature(node: ast.FunctionDef | ast.AsyncFunctionDef) -> str:
+def _get_signature(node: "Union[ast.FunctionDef, ast.AsyncFunctionDef]") -> str:
     """Build a compact signature string for a function."""
     # Get function name
     name = node.name

@@ -1,29 +1,46 @@
 # Context Lens
 
-Index your codebase once. Query it fast. Context Lens builds a signature-level
-map of your repo — every function, class, and method with their call relationships
-— so your agent can find the relevant code without reading every file.
+You are working inside a code repository.
+Before reading large amounts of code or selecting files manually, you must use Context Lens.
 
-## What it does
+## Available commands
 
-- Indexes source files into a local SQLite database (Python, JS/TS supported)
-- Extracts function/class signatures and lightweight call edges
-- Handles incremental updates — only re-parses changed files
-- Detects moved/renamed files and preserves their index entries
-- Returns compact signature maps and expanded code blocks on demand
+- `lens_fix` — For bug fixes or implementation tasks
+- `lens_ask` — For questions about the codebase
+- `lens_plan` — For multi-step or unclear tasks
 
-## Tools
+## Rules
 
-- `context_index` — index or re-index a repository
-- `context_query` — get the signature map for a task
-- `context_expand` — expand selected unit IDs into full source code
+Always prefer lens commands over manual file reading.
+
+- For questions about the codebase → Use `lens_ask`
+- For bug fixes or implementation → Use `lens_fix`
+- For multi-step or unclear tasks → Use `lens_plan`
+
+## Do not
+
+- Open entire files unless necessary
+- Paste large amounts of code into context
+- Manually search the repo first
+
+## Context Lens will
+
+- Index the repo automatically
+- Select relevant units (functions, classes, methods)
+- Expand only needed code
+- Include call graph neighbors and related tests
+
+## After running lens_fix
+
+1. Apply the changes to the repo
+2. Run tests if available
+3. Summarize changes
+
+## If Context Lens output is insufficient
+
+- Expand additional related units
+- Do not fall back to full file reads immediately
 
 ## Keywords
 
-index, codebase, context, tokens, signatures, functions, classes, call graph
-
-## Requirements
-
-This Power requires `uv` to be installed. If you don't have it:
-- macOS/Linux: `curl -LsSf https://astral.sh/uv/install.sh | sh`
-- Or see: https://docs.astral.sh/uv/getting-started/installation/
+fix, ask, plan, context, index, codebase, tokens, signatures, functions, classes, call graph
