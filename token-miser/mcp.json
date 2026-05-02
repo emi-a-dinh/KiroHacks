@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "token-miser": {
+      "command": "python",
+      "args": ["${powerPath}/src/mcp_server.py"],
+      "disabled": false,
+      "autoApprove": ["miser_fix", "miser_ask", "miser_plan"]
+    }
+  }
+}

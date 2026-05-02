@@ -13,3 +13,15 @@
 **Issues encountered:** The original reindex hook used shell redirects (`>>`, `2>&1`) in `runCommand`, which the hook runner doesn't reliably interpret — command was silently failing. Fixed by removing the redirect since `--quiet` already suppresses normal output.
 
 **Open items:** None from this session.
+
+## 2026-05-02 — Auto-commit hook and session commit
+
+**What changed:**
+- `.kiro/hooks/commit-helper.kiro.hook` — changed from `userTriggered` to `agentStop` so it auto-commits after every agent interaction
+- Auto-committed staged changes: new hooks, memory file, updated query modules, token-miser scaffold
+
+**Decisions made:** Commit hook stages everything (`git add -A`) and commits automatically. Conventional commit format enforced via the hook prompt.
+
+**Issues encountered:** None.
+
+**Open items:** The auto-commit hook and memory-consolidator both fire on `agentStop` — watch for ordering issues if both try to write and commit in the same cycle.

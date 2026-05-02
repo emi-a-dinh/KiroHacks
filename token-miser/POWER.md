@@ -5,17 +5,17 @@ Before reading large amounts of code or selecting files manually, you must use T
 
 ## Available commands
 
-- `lens_fix` — For bug fixes or implementation tasks
-- `lens_ask` — For questions about the codebase
-- `lens_plan` — For multi-step or unclear tasks
+- `miser_fix` — For bug fixes or implementation tasks
+- `miser_ask` — For questions about the codebase
+- `miser_plan` — For multi-step or unclear tasks
 
 ## Rules
 
-Always prefer lens commands over manual file reading.
+Always prefer miser commands over manual file reading.
 
-- For questions about the codebase → Use `lens_ask`
-- For bug fixes or implementation → Use `lens_fix`
-- For multi-step or unclear tasks → Use `lens_plan`
+- For questions about the codebase → Use `miser_ask`
+- For bug fixes or implementation → Use `miser_fix`
+- For multi-step or unclear tasks → Use `miser_plan`
 
 ## Do not
 
@@ -30,7 +30,7 @@ Always prefer lens commands over manual file reading.
 - Expand only needed code
 - Include call graph neighbors and related tests
 
-## After running lens_fix
+## After running miser_fix
 
 1. Apply the changes to the repo
 2. Run tests if available
@@ -43,4 +43,4 @@ Always prefer lens commands over manual file reading.
 
 ## Keywords
 
-fix, ask, plan, context, index, codebase, tokens, signatures, functions, classes, call graph
+fix, ask, plan, context, index, codebase, tokens, signatures, functions, classes, call graph, miser

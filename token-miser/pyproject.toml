@@ -1,0 +1,22 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "token-miser"
+version = "2.0.0"
+description = "Smart context selection for coding agents — index once, query fast"
+readme = "README.md"
+requires-python = ">=3.9"
+license = "MIT"
+keywords = ["llm", "context", "indexing", "code", "mcp", "tokens"]
+dependencies = []
+
+[project.optional-dependencies]
+treesitter = ["tree-sitter-languages>=1.10.0"]
+
+[project.scripts]
+miser = "src.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
