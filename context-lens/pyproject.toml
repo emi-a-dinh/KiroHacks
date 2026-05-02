@@ -1,0 +1,33 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "context-lens"
+version = "1.0.0"
+description = "Signature-level code indexing for LLM context optimization"
+readme = "POWER.md"
+requires-python = ">=3.10"
+license = "MIT"
+keywords = ["llm", "context", "indexing", "code", "mcp"]
+authors = [
+    { name = "Context Lens" }
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = []
+
+[project.optional-dependencies]
+treesitter = ["tree-sitter-languages>=1.10.0"]
+
+[project.scripts]
+context-lens = "src.cli:main"
+context-lens-mcp = "src.mcp_server:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
