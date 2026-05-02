@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "name": "Run Tests After Task",
+  "description": "Runs pytest in fast-fail mode after each spec task is marked complete",
+  "version": "1",
+  "when": {
+    "type": "postTaskExecution"
+  },
+  "then": {
+    "type": "runCommand",
+    "command": "python -m pytest tests/ -x -q"
+  }
+}

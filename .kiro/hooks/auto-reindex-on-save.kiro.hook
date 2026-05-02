@@ -1,0 +1,18 @@
+{
+  "enabled": true,
+  "name": "Auto-Reindex on Save",
+  "description": "Runs context-index incrementally whenever a Python, TypeScript, or JavaScript source file is saved",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "**/*.py",
+      "**/*.ts",
+      "**/*.js"
+    ]
+  },
+  "then": {
+    "type": "runCommand",
+    "command": "python cli.py context-index ."
+  }
+}
