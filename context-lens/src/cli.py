@@ -65,6 +65,28 @@ def cmd_expand(args):
         print(expanded)
 
 
+def cmd_tree(args):
+    """Render the index as a terminal tree."""
+    from storage.db import Database
+    from query.tree_view import build_tree_view
+
+    index_path = args.index or ".context-lens/index.db"
+
+    if not Path(index_path).exists():
+        print(f"Error: Index not found at {index_path}. Run 'context-lens index' first.", file=sys.stderr)
+        sys.exit(1)
+
+    with Database(index_path) as db:
+        tree = build_tree_view(
+            db,
+            index_path=index_path,
+            show_edges=not args.no_edges,
+            show_signatures=args.signatures,
+            filter_type=args.type,
+        )
+        print(tree)
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Context Lens - Signature-level code indexing for LLM context"
@@ -93,6 +115,14 @@ def main():
     expand_parser.add_argument("--neighbors", "-n", action="store_true", help="Include 1-hop neighbors")
     expand_parser.add_argument("--index", "-i", help="Path to index database")
     expand_parser.set_defaults(func=cmd_expand)
+
+    # Tree command
+    tree_parser = subparsers.add_parser("tree", help="Render the index as a terminal tree")
+    tree_parser.add_argument("--index", "-i", help="Path to index database")
+    tree_parser.add_argument("--no-edges", action="store_true", help="Hide call edge counts")
+    tree_parser.add_argument("--signatures", "-s", action="store_true", help="Show full signatures instead of symbol names")
+    tree_parser.add_argument("--type", "-t", choices=["function", "method", "class", "constant"], help="Filter by unit type")
+    tree_parser.set_defaults(func=cmd_tree)
     
     args = parser.parse_args()
     args.func(args)
