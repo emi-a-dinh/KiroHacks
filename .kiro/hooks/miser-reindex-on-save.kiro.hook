@@ -1,0 +1,13 @@
+{
+  "name": "Token Miser: Re-index on save",
+  "version": "1.0.0",
+  "description": "Re-indexes the codebase when a source file is saved.",
+  "when": {
+    "type": "fileEdited",
+    "patterns": ["**/*.py", "**/*.js", "**/*.ts", "**/*.tsx", "**/*.jsx", "**/*.go", "**/*.rs", "**/*.java", "**/*.rb"]
+  },
+  "then": {
+    "type": "runCommand",
+    "command": "python token-miser/src/cli.py index ."
+  }
+}

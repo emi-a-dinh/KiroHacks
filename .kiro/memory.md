@@ -25,3 +25,17 @@
 **Issues encountered:** None.
 
 **Open items:** The auto-commit hook and memory-consolidator both fire on `agentStop` — watch for ordering issues if both try to write and commit in the same cycle.
+
+## 2026-05-02 — Token Miser: full rename and v2 selector
+
+**What changed:**
+- `token-miser/` — complete copy of `context-lens/` renamed: CLI (`miser`), MCP tools (`miser_fix/ask/plan`), index dir (`.token-miser/`), hooks, steering, POWER.md, pyproject.toml
+- `token-miser/src/query/selector.py` — rewrote with 6 improvements: fixed camelCase tokenizer, domain alias expansion (20+ alias groups), stricter sibling selection (score > 0 or shared name tokens), smarter test discovery (file name + function name + code references + route strings), coverage-based confidence (5 weighted signals), explainable selection (reasons per unit + coverage dict)
+- `token-miser/src/query/smart.py` — updated to use new `SelectionResult` dataclass, outputs `## Selection Coverage` block and per-unit `# Selected because:` comments
+- `~/.kiro/settings/mcp.json` — updated to point at token-miser MCP server with new tool names
+
+**Decisions made:** Kept `context-lens/` folder intact as reference. Token Miser is the user-facing name going forward. Confidence uses coverage-based scoring (target_found, similar_pattern, dependency, test, error_file) instead of raw top-score thresholds.
+
+**Issues encountered:** Initial `cp -r context-lens token-miser` nested the folder incorrectly — had to redo with `cp -r context-lens/ token-miser/`. Python 3.9 compatibility required replacing `str | None` union syntax with `Optional[str]`.
+
+**Open items:** `context-lens/` folder can be deleted once token-miser is confirmed stable. Should add `.gitignore` for `__pycache__/`, `.token-miser/`, `.context-lens/` dirs.
