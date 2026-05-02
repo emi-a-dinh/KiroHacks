@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "name": "Auto Commit on Stop",
+  "description": "Automatically stages and commits all changes with a conventional commit message after each agent interaction",
+  "version": "1",
+  "when": {
+    "type": "agentStop"
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Check if there are any uncommitted changes by running `git status --porcelain`. If there are changes, stage them with `git add -A`, then run `git diff --cached --stat` to see what's staged. Based on the diff, craft a concise conventional commit message (feat/fix/refactor/docs/test/chore: subject under 70 characters) and run `git commit -m \"<message>\"`. If there are no changes, do nothing silently."
+  }
+}

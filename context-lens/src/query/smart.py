@@ -5,9 +5,8 @@ These combine indexing, selection, and expansion into a single call.
 No manual unit IDs, no manual index, no manual expand.
 """
 
-import time
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, TYPE_CHECKING
+from typing import Dict, List, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ..indexer.models import CodeUnit
@@ -19,8 +18,6 @@ def _ensure_index(repo_path: str) -> str:
     Ensure the repo is indexed. Only runs a full index if the database
     doesn't exist yet. Otherwise trusts that the file-save and file-delete
     hooks keep the index fresh.
-    
-    Returns the index database path.
     """
     import sys
     src_path = Path(__file__).parent.parent
@@ -31,10 +28,8 @@ def _ensure_index(repo_path: str) -> str:
     index_path = str(repo / ".context-lens" / "index.db")
 
     if Path(index_path).exists():
-        # Index exists — hooks keep it fresh, no need to re-scan
         return index_path
 
-    # No index yet — create one
     from indexer.core import run_index
     result = run_index(repo_path)
     return result.index_path
@@ -60,22 +55,30 @@ def _format_edge_comment(
 
 
 def _build_context_block(
-    units: List["CodeUnit"],
+    selected_units,  # List[SelectedUnit]
     db: "Database",
+    show_reasons: bool = True,
 ) -> str:
-    """Build the expanded code block for selected units."""
+    """Build the expanded code block for selected units with reasons."""
+    units = [su.unit for su in selected_units]
     all_ids = [u.unit_id for u in units if u.unit_id]
     id_to_unit = {u.unit_id: u for u in units if u.unit_id}
     calls, called_by = db.get_edges_for_units(all_ids)
 
     lines = []
-    for unit in units:
+    for su in selected_units:
+        unit = su.unit
         uid = unit.unit_id
+
         header = f"### {unit.file_path} — {unit.symbol_name}"
         if unit.parent_class:
             header = f"### {unit.file_path} — {unit.parent_class}.{unit.symbol_name}"
         header += f" (lines {unit.start_line}–{unit.end_line})"
         lines.append(header)
+
+        # Selection reasons
+        if show_reasons and su.reasons:
+            lines.append(f"# Selected because: {'; '.join(su.reasons)}")
 
         if uid:
             lines.append(_format_edge_comment("Called by", called_by.get(uid, []), id_to_unit))
@@ -87,6 +90,17 @@ def _build_context_block(
     return "\n".join(lines)
 
 
+def _build_coverage_block(result) -> str:
+    """Build a coverage summary from SelectionResult."""
+    lines = []
+    lines.append("## Selection Coverage")
+    for key, found in result.coverage.items():
+        label = key.replace("_", " ")
+        status = "yes" if found else "no"
+        lines.append(f"  {label}: {status}")
+    return "\n".join(lines)
+
+
 def run_fix(
     task: str,
     repo_path: str = ".",
@@ -95,9 +109,9 @@ def run_fix(
 ) -> str:
     """
     lens fix — the main command.
-    
-    1. Ensure index exists and is up to date
-    2. Auto-select relevant units
+
+    1. Ensure index exists
+    2. Auto-select relevant units with reasons
     3. Expand them
     4. Return structured context for the agent
     """
@@ -108,18 +122,16 @@ def run_fix(
     from storage.db import Database
     from query.selector import select_units
 
-    # Step 1: ensure index
     index_path = _ensure_index(repo_path)
 
-    # Step 2: select relevant units
     with Database(index_path) as db:
-        selected, confidence = select_units(
+        result = select_units(
             db, task, error_log, k=k,
             include_neighbors=True,
             include_tests=True,
         )
 
-        if not selected:
+        if not result.units:
             return (
                 f"## Task\n{task}\n\n"
                 "## Selection\n"
@@ -128,20 +140,11 @@ def run_fix(
                 "Selection confidence: low\n"
             )
 
-        # Step 3: build context
-        context_block = _build_context_block(selected, db)
+        context_block = _build_context_block(result.units, db)
+        coverage_block = _build_coverage_block(result)
 
-        # Confidence label
-        if confidence >= 0.8:
-            conf_label = "high"
-        elif confidence >= 0.5:
-            conf_label = "medium"
-        else:
-            conf_label = "low"
-
-    # Step 4: assemble structured output
     lines = []
-    lines.append(f"## Task")
+    lines.append("## Task")
     lines.append(task)
     lines.append("")
 
@@ -154,9 +157,12 @@ def run_fix(
         lines.extend(error_lines)
         lines.append("")
 
-    lines.append(f"## Selected Code ({len(selected)} units, confidence: {conf_label})")
+    lines.append(f"## Selected Code ({len(result.units)} units, confidence: {result.confidence_label})")
     lines.append("")
     lines.append(context_block)
+
+    lines.append(coverage_block)
+    lines.append("")
 
     lines.append("## Instructions")
     lines.append("1. Implement the fix using the code above as context.")
@@ -165,8 +171,8 @@ def run_fix(
     lines.append("4. Run tests if a test runner is available.")
     lines.append("5. Summarize what changed.")
     lines.append("")
-    lines.append(f"Selection confidence: {conf_label}")
-    if conf_label == "low":
+    lines.append(f"Selection confidence: {result.confidence_label}")
+    if result.confidence_label == "low":
         lines.append("Consider expanding additional units if the context is insufficient.")
 
     return "\n".join(lines)
@@ -178,11 +184,7 @@ def run_ask(
     error_log: Optional[str] = None,
     k: int = 8,
 ) -> str:
-    """
-    lens ask — answer a question about the codebase.
-    
-    Same selection logic as fix, but instructions are for explanation, not editing.
-    """
+    """lens ask — answer a question about the codebase."""
     import sys
     src_path = Path(__file__).parent.parent
     if str(src_path) not in sys.path:
@@ -193,29 +195,20 @@ def run_ask(
     index_path = _ensure_index(repo_path)
 
     with Database(index_path) as db:
-        selected, confidence = select_units(
+        result = select_units(
             db, question, error_log, k=k,
             include_neighbors=True,
             include_tests=False,
         )
 
-        if not selected:
-            return (
-                f"## Question\n{question}\n\n"
-                "## Selection\nNo relevant code units found.\n"
-            )
+        if not result.units:
+            return f"## Question\n{question}\n\n## Selection\nNo relevant code units found.\n"
 
-        context_block = _build_context_block(selected, db)
-
-        if confidence >= 0.8:
-            conf_label = "high"
-        elif confidence >= 0.5:
-            conf_label = "medium"
-        else:
-            conf_label = "low"
+        context_block = _build_context_block(result.units, db)
+        coverage_block = _build_coverage_block(result)
 
     lines = []
-    lines.append(f"## Question")
+    lines.append("## Question")
     lines.append(question)
     lines.append("")
 
@@ -224,9 +217,12 @@ def run_ask(
         lines.extend(error_log.strip().splitlines()[:40])
         lines.append("")
 
-    lines.append(f"## Relevant Code ({len(selected)} units, confidence: {conf_label})")
+    lines.append(f"## Relevant Code ({len(result.units)} units, confidence: {result.confidence_label})")
     lines.append("")
     lines.append(context_block)
+
+    lines.append(coverage_block)
+    lines.append("")
 
     lines.append("## Instructions")
     lines.append("Answer the question using only the code above as context.")
@@ -241,11 +237,7 @@ def run_plan(
     error_log: Optional[str] = None,
     k: int = 12,
 ) -> str:
-    """
-    lens plan — create an implementation plan without making changes.
-    
-    Selects more units than fix (wider context) and asks for a plan, not edits.
-    """
+    """lens plan — create an implementation plan without making changes."""
     import sys
     src_path = Path(__file__).parent.parent
     if str(src_path) not in sys.path:
@@ -256,29 +248,20 @@ def run_plan(
     index_path = _ensure_index(repo_path)
 
     with Database(index_path) as db:
-        selected, confidence = select_units(
+        result = select_units(
             db, task, error_log, k=k,
             include_neighbors=True,
             include_tests=True,
         )
 
-        if not selected:
-            return (
-                f"## Task\n{task}\n\n"
-                "## Selection\nNo relevant code units found.\n"
-            )
+        if not result.units:
+            return f"## Task\n{task}\n\n## Selection\nNo relevant code units found.\n"
 
-        context_block = _build_context_block(selected, db)
-
-        if confidence >= 0.8:
-            conf_label = "high"
-        elif confidence >= 0.5:
-            conf_label = "medium"
-        else:
-            conf_label = "low"
+        context_block = _build_context_block(result.units, db)
+        coverage_block = _build_coverage_block(result)
 
     lines = []
-    lines.append(f"## Task")
+    lines.append("## Task")
     lines.append(task)
     lines.append("")
 
@@ -287,9 +270,12 @@ def run_plan(
         lines.extend(error_log.strip().splitlines()[:40])
         lines.append("")
 
-    lines.append(f"## Relevant Code ({len(selected)} units, confidence: {conf_label})")
+    lines.append(f"## Relevant Code ({len(result.units)} units, confidence: {result.confidence_label})")
     lines.append("")
     lines.append(context_block)
+
+    lines.append(coverage_block)
+    lines.append("")
 
     lines.append("## Instructions")
     lines.append("Create a step-by-step implementation plan for this task.")

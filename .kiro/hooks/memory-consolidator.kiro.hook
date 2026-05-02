@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "name": "Memory Consolidator",
+  "description": "After the agent finishes working, it reviews what was done in the session and appends a concise summary to .kiro/memory.md — capturing key decisions, changes made, issues encountered, and open questions for future context",
+  "version": "1",
+  "when": {
+    "type": "agentStop"
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Review what was accomplished in this session. Append a concise summary entry to `.kiro/memory.md` with the following format:\n\n## <today's date> — <short title>\n\n**What changed:** bullet list of files modified and why\n**Decisions made:** any architectural or design choices\n**Issues encountered:** problems hit and how they were resolved\n**Open items:** anything left unfinished or worth revisiting\n\nKeep each entry brief — aim for 5-10 lines. If `.kiro/memory.md` doesn't exist yet, create it with a heading `# Project Memory`. Always append to the end, never overwrite previous entries."
+  }
+}
