@@ -362,3 +362,14 @@
 **Issues encountered:** None.
 
 **Open items:** User is running the 3-prompt baseline. After baseline, need to re-enable Power, reset flask_project, and run 3-prompt treatment with miser-plan prefixes.
+
+## 2026-05-02 — Pull from origin/main
+
+**What changed:**
+- Merged `origin/main` into `test/benchmark-kiro-power` — updates to token-miser steering file, mcp_server.py, and smart.py
+
+**Decisions made:** None — routine merge.
+
+**Issues encountered:** Divergent branches required explicit `--no-edit` merge. Stash/pop cycle was clean with no conflicts this time.
+
+**Open items:** User is proceeding with the 3-prompt baseline benchmark run.
