@@ -413,3 +413,17 @@
 - Flask project at 2-5% context usage is still too small for the signature-map approach to pay off. Need a project that pushes context to 50%+ for the Power to show savings.
 - The `flask_project/.token-miser/` index was created during treatment — not committed.
 - Consider testing with a monorepo or very large codebase where full-file reads are expensive.
+
+## 2026-05-02 — Benchmark analysis: Flask too small for Power savings
+
+**What changed:**
+- `.kiro/memory.md` — appended session summary
+
+**Decisions made:** Concluded that Flask (~15K lines, 20 files) is too small for the token-miser Power to show token savings. At 2-5% context usage, full-file reads are cheap and the Power's multi-step approach (index→query→expand) adds overhead via extra API round-trips.
+
+**Issues encountered:** None — this was an analysis session.
+
+**Open items:**
+- The Power's token savings require a project large enough to push context to 30-50%+ (100+ files, 50K+ lines)
+- For the hackathon, consider demonstrating qualitative benefits (better file selection, focused context) rather than token reduction on a small project
+- Alternatively, find or create a large monorepo-style project for benchmarking
