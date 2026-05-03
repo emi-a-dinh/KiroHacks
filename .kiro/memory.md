@@ -268,3 +268,14 @@
 **Issues encountered:** User started mitmdump without `BENCHMARK_JSONL_PATH`, then hit Ctrl+Z (suspend) instead of Ctrl+C (kill) when trying to restart. The suspended process held port 8080, causing "address already in use" on the second attempt. Fix: `kill %1` to kill the suspended job, then restart with the env var.
 
 **Open items:** User still needs to complete the full proxy + Kiro launch sequence and run the benchmark. The corrected Terminal 1 command includes `BENCHMARK_JSONL_PATH` inline.
+
+## 2026-05-02 — MCP server fails through proxy, NO_PROXY fix
+
+**What changed:**
+- `.kiro/memory.md` — appended session summary
+
+**Decisions made:** For baseline runs, properly disable the Power (mcp.json `disabled: true` + rename steering file) so Kiro doesn't attempt MCP connections at all. For treatment runs, add `NO_PROXY=localhost,127.0.0.1` to the Kiro launch env so local MCP server connections bypass the proxy while AWS API calls still route through it.
+
+**Issues encountered:** MCP server connection error (-32000) when launching Kiro with proxy env vars. Root cause: `HTTP_PROXY`/`HTTPS_PROXY` env vars cause Kiro to route ALL connections through mitmproxy, including local MCP server connections which then fail.
+
+**Open items:** The automation driver should be updated to include `NO_PROXY=localhost,127.0.0.1` in the env vars it sets when launching Kiro. User is proceeding with manual benchmark run.

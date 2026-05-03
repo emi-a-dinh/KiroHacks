@@ -3,7 +3,7 @@
     "token-miser": {
       "command": "/Users/tayingthao/Documents/Kirohacks/.venv/bin/python",
       "args": ["/Users/tayingthao/Documents/Kirohacks/token-miser/src/mcp_server.py"],
-      "disabled": false,
+      "disabled": true,
       "autoApprove": ["miser_fix", "miser_ask", "miser_plan"]
     }
   }
