@@ -20,7 +20,7 @@ class Task(db.Model):
     priority = db.Column(db.String(10), default="medium")
     due_date = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow)  # ISSUE 2: never updated on save
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
 
     tags = db.relationship("Tag", secondary="task_tags", backref="tasks", lazy=True)

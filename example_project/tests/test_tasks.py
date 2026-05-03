@@ -56,7 +56,10 @@ def test_list_tasks_unauthenticated(client):
 def test_list_tasks_empty(auth_client):
     response = auth_client.get("/api/tasks/")
     assert response.status_code == 200
-    assert response.get_json() == []
+    data = response.get_json()
+    assert data["items"] == []
+    assert "pagination" in data
+    assert data["pagination"]["total"] == 0
 
 
 def test_get_task_not_found(auth_client):

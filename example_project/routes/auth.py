@@ -5,18 +5,17 @@ Authentication routes - register, login, logout.
 from flask import Blueprint, request, jsonify, session
 from database import db
 from models.user import User
-import hashlib
+from werkzeug.security import generate_password_hash, check_password_hash
 
 auth_bp = Blueprint("auth", __name__)
 
 
 def hash_password(password: str) -> str:
-    # ISSUE 3: MD5 is cryptographically broken. Should use bcrypt or werkzeug's generate_password_hash.
-    return hashlib.md5(password.encode()).hexdigest()
+    return generate_password_hash(password)
 
 
 def check_password(password: str, password_hash: str) -> bool:
-    return hash_password(password) == password_hash
+    return check_password_hash(password_hash, password)
 
 
 @auth_bp.route("/register", methods=["POST"])
@@ -35,6 +34,9 @@ def register():
 
     if len(password) < 8:
         return jsonify({"error": "Password must be at least 8 characters"}), 400
+
+    if User.query.filter_by(username=username).first():
+        return jsonify({"error": "Username already taken"}), 409
 
     if User.query.filter_by(email=email).first():
         return jsonify({"error": "Email already registered"}), 409

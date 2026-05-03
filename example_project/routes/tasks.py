@@ -5,6 +5,7 @@ Task CRUD routes.
 from flask import Blueprint, request, jsonify, session
 from database import db
 from models.task import Task, Tag, VALID_STATUSES, VALID_PRIORITIES
+from utils.pagination import paginate_query
 from datetime import datetime
 
 tasks_bp = Blueprint("tasks", __name__)
@@ -25,10 +26,8 @@ def list_tasks():
     if not user_id:
         return jsonify({"error": "Not authenticated"}), 401
 
-    # ISSUE 4: No pagination. Returns ALL tasks for the user.
-    # On large datasets this will be slow and return too much data.
-    tasks = Task.query.filter_by(user_id=user_id).all()
-    return jsonify([t.to_dict() for t in tasks]), 200
+    result = paginate_query(Task.query.filter_by(user_id=user_id))
+    return jsonify(result), 200
 
 
 @tasks_bp.route("/", methods=["POST"])
@@ -160,7 +159,7 @@ def update_task(task_id):
                 db.session.add(tag)
             task.tags.append(tag)
 
-    # updated_at is NOT set here — see Issue 2 in models/task.py
+    task.updated_at = datetime.utcnow()
     db.session.commit()
     return jsonify(task.to_dict()), 200
 

@@ -5,6 +5,8 @@ User management routes.
 from flask import Blueprint, request, jsonify, session
 from database import db
 from models.user import User
+from models.task import Task
+from utils.pagination import paginate_query
 
 users_bp = Blueprint("users", __name__)
 
@@ -39,6 +41,9 @@ def update_user(user_id):
         username = data["username"].strip()
         if not username:
             return jsonify({"error": "username cannot be empty"}), 400
+        existing = User.query.filter_by(username=username).first()
+        if existing and existing.id != user_id:
+            return jsonify({"error": "Username already taken"}), 409
         user.username = username
 
     if "email" in data:
@@ -83,6 +88,5 @@ def get_user_tasks(user_id):
     if not user:
         return jsonify({"error": "User not found"}), 404
 
-    # Same pagination issue as tasks list — no limit/offset
-    tasks = user.tasks
-    return jsonify([t.to_dict() for t in tasks]), 200
+    result = paginate_query(Task.query.filter_by(user_id=user_id))
+    return jsonify(result), 200
