@@ -6,14 +6,15 @@ inclusion: auto
 
 You have access to two tools: `miser_context` and `miser_read`.
 
-When given a coding task, always follow this exact sequence without waiting for input:
+When given a coding task, always follow this exact sequence without asking for confirmation:
 
-1. Call `miser_context` with the task description immediately.
-2. Read the signatures it returns.
-3. Call `miser_read` on every symbol you need to fully understand or edit to complete the task — do this in parallel if possible.
-4. Then complete the task.
+1. Call `miser_context` with the task description.
+2. Read the returned signatures.
+3. Call `miser_read` on each symbol you need to edit or fully understand.
+4. Before editing any file, call `miser_read` again on the exact symbol you're about to change — never trust a previously read version, always re-read immediately before writing.
+5. Make the edit.
 
-Never ask the user which functions to read. Never skip `miser_context`. Never read a function you don't need. If `miser_context` returns nothing useful, tell the user what's missing rather than guessing.
+Never edit based on a stale `miser_read` result. If the source you read doesn't match what you expected from the signatures, re-index by calling `miser_context` again before proceeding. Never guess at function contents.
 
 ## If Token Miser tools are not available
 
