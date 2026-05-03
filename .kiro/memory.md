@@ -211,3 +211,16 @@
 **Issues encountered:** Merge from main had divergent branches (resolved with --no-rebase). Stash pop had binary conflict on index.db (resolved with --theirs). Nested .git in flask_project prevented parent repo tracking (removed it). Merged code broke test_token_miser_selection.py import (excluded from test runs).
 
 **Open items:** `test_token_miser_selection.py` has a broken import from the main merge (`run_ask` no longer exists in `query.smart`). Should add remaining Flask project files to git if needed for the benchmark. Ready to run the automated benchmark.
+
+## 2026-05-02 — Full Flask project committed and main merged
+
+**What changed:**
+- `flask_project/` — committed full Flask source (236 files) including tests, docs, examples, and the introduced async view bug
+- `.kiro/memory.md` — appended session summaries
+- Merged `origin/main` into `test/benchmark-kiro-power` (token-miser selector/smart changes, WRITEUP.md, steering updates)
+
+**Decisions made:** Removed nested `.git` from flask_project so it's tracked by the parent repo. Committed the full project rather than just the modified file so the benchmark has a complete codebase to work with.
+
+**Issues encountered:** Merge had divergent branches (used `--no-rebase`). Stash pop had binary conflict on index.db (resolved with `--theirs`). Merged code broke `test_token_miser_selection.py` import (`run_ask` removed from `query.smart`). Config test assertion needed updating after repo_path change.
+
+**Open items:** `test_token_miser_selection.py` still broken from merge — needs import fix. Ready to test the automated benchmark with `kiro` subprocess. Need to verify Kiro accepts stdin input for prompt delivery.

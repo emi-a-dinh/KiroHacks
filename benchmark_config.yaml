@@ -7,7 +7,7 @@ proxy_port: 8080
 timeout_seconds: 120
 
 automation:
-  kiro_path: "kiro"
+  kiro_path: "/usr/local/bin/kiro"
   idle_timeout: 30
   turn_timeout: 300
   startup_timeout: 60
