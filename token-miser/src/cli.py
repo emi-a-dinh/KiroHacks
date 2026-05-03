@@ -111,7 +111,7 @@ No manual indexing, unit IDs, or expansion needed. Just describe the task.
     sub = parser.add_subparsers(dest="command")
 
     p = sub.add_parser("fix", help="Select code and get fix instructions")
-    p.add_argument("task"); p.add_argument("--error", "-e"); p.add_argument("--k", "-k", type=int, default=10)
+    p.add_argument("task"); p.add_argument("--error", "-e"); p.add_argument("--k", "-k", type=int, default=12)
     p.set_defaults(func=cmd_fix)
 
     p = sub.add_parser("ask", help="Ask a question about the codebase")

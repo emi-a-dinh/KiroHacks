@@ -58,7 +58,7 @@ ALIASES = {
     "writes":         {"write", "post", "put", "patch", "delete", "create", "update"},
     "writing":        {"write", "post", "put", "patch", "delete", "create", "update"},
     "create":         {"post", "insert", "add", "save"},
-    "update":         {"put", "patch", "modify", "edit", "change"},
+    "update":         {"modify", "edit", "change"},
     "remove":         {"delete", "destroy"},
     "read":           {"get", "list", "search", "fetch", "query"},
     "list":           {"get", "read", "fetch"},
@@ -184,7 +184,12 @@ def _is_route_unit(unit: "CodeUnit") -> bool:
 
 
 def _task_wants_write_endpoint(intent: Dict[str, bool]) -> bool:
-    """Detect tasks that need write endpoint context."""
+    """Detect tasks that need write endpoint context.
+
+    Requires both a write signal AND an explicit backend/api/auth signal.
+    A task like "update affected tests" has write=True from the alias expansion
+    of "update", but no backend signal — it should not trigger endpoint filtering.
+    """
     return intent["write"] and (intent["backend"] or intent["api"] or intent["auth"])
 
 
@@ -442,11 +447,12 @@ def _score_unit(
         score += pts
         reasons.append(f"signature matches error tokens")
 
-    # Code body overlap (lighter weight, capped)
+    # Code body overlap — raised cap so a function with many relevant tokens
+    # scores meaningfully higher than one with just one or two.
     code_tokens = _tokenize(unit.full_code)
     code_overlap = code_tokens & expanded_tokens
     if code_overlap:
-        pts = min(2, len(code_overlap))
+        pts = min(8, len(code_overlap) * 1.5)
         score += pts
 
     score += _framework_score(unit, intent)
@@ -503,6 +509,19 @@ def _score_unit(
             # source contains the same vocabulary (auth, write, user, etc.)
             score = 0.0
             reasons = []
+
+    # Suppress tooling files for any task that doesn't explicitly mention the tool.
+    # This must run outside the backend/api block so it catches all intent types.
+    if _is_tooling_file(unit.file_path) and not (task_tokens & {"miser", "selector", "indexer", "index", "scanner", "parser"}):
+        score = 0.0
+        reasons = []
+
+    # Suppress private test helpers (e.g. _write_fixture, _setup_db).
+    # These are not test functions — they're setup code that happens to contain
+    # every domain keyword and inflates scores badly.
+    if "test" in unit.file_path.lower() and unit.symbol_name.startswith("_"):
+        score = 0.0
+        reasons = []
 
     return score, reasons
 
@@ -595,19 +614,31 @@ def select_units(
                 reasons=["same-file related route handler"]
             ))
 
-    # ── Phase 4: Call graph neighbors ──────────────────────────────────────
+    # ── Phase 4: Depth-1 callee expansion only ────────────────────────────
+    # We expand callees (what selected units call) but not callers.
+    # Callers are rarely needed for a fix — they just add noise.
     if include_neighbors and selected_ids:
-        neighbor_ids = db.get_neighbors(list(selected_ids))
-        neighbor_units = db.get_units_by_ids(neighbor_ids)
-        for unit in neighbor_units:
-            if len(selected) >= k * 2:
+        callee_ids_all: Set[int] = set()
+        placeholders = ",".join("?" * len(selected_ids))
+        # Use db directly via a helper — get only outgoing edges (callees)
+        callee_rows = db.conn.execute(
+            f"SELECT DISTINCT callee_id FROM edges WHERE caller_id IN ({placeholders})",
+            list(selected_ids)
+        ) if hasattr(db, 'conn') else []
+        for row in callee_rows:
+            callee_ids_all.add(row[0] if isinstance(row, tuple) else row["callee_id"])
+        callee_ids_all -= selected_ids
+
+        callee_units = db.get_units_by_ids(list(callee_ids_all))
+        for unit in callee_units:
+            if len(selected) >= k + 4:
                 break
             if unit.unit_id in selected_ids:
                 continue
             n_score, n_reasons = _score_unit(unit, task_tokens, expanded_tokens, error_tokens, file_path_hits, intent)
             if _task_wants_write_endpoint(intent) and "/repositories/" in f"/{unit.file_path.lower()}":
                 continue
-            if n_score >= 3:
+            if n_score >= 1:
                 n_reasons.append("call graph neighbor")
                 selected_ids.add(unit.unit_id)
                 selected.append(SelectedUnit(unit=unit, score=n_score, reasons=n_reasons))
