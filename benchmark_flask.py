@@ -454,6 +454,7 @@ def run_bug(
     token_miser_cli: Path,
     verbose: bool = False,
     delay: float = 5.0,
+    emit=print,
 ) -> BugResult:
     result = BugResult(bug=bug)
 
@@ -473,11 +474,11 @@ def run_bug(
         result.without_tokens = tokens
         result.without_correct = verify_response(response, bug.verify)
         if verbose:
-            print(f"  [without] {tokens} tokens, correct={result.without_correct}")
+            emit(f"  [without] {tokens} tokens, correct={result.without_correct}")
     except Exception as e:
         result.without_error = str(e)[:120]
         if verbose:
-            print(f"  [without] ERROR: {e}")
+            emit(f"  [without] ERROR: {e}")
 
     if delay > 0:
         time.sleep(delay)
@@ -492,14 +493,14 @@ def run_bug(
         result.with_tokens = tokens
         result.with_correct = verify_response(response, bug.verify)
         if verbose:
-            print(f"  [with]    {tokens} tokens, correct={result.with_correct}")
+            emit(f"  [with]    {tokens} tokens, correct={result.with_correct}")
         if not result.with_correct and selected_symbols:
-            print(f"  [with]    selected symbols: {', '.join(selected_symbols)}")
-            print(f"  [with]    verify string '{bug.verify}' not found in response")
+            emit(f"  [with]    selected symbols: {', '.join(selected_symbols)}")
+            emit(f"  [with]    verify string '{bug.verify}' not found in response")
     except Exception as e:
         result.with_error = str(e)[:120]
         if verbose:
-            print(f"  [with]    ERROR: {e}")
+            emit(f"  [with]    ERROR: {e}")
 
     return result
 
@@ -600,6 +601,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--end", type=int, default=10)
     parser.add_argument("--delay", type=float, default=5.0,
                         help="Seconds between the two API calls per bug (default: 5).")
+    parser.add_argument("--inter-delay", type=float, default=30.0,
+                        help="Seconds to wait between bugs (default: 30).")
     parser.add_argument("--verbose", "-v", action="store_true")
     parser.add_argument("--dry-run", action="store_true",
                         help="Validate patches without calling OpenAI.")
@@ -633,28 +636,43 @@ def main() -> None:
         return
 
     client = require_openai()
-    print(f"Running {len(bugs)} bugs  |  model: {args.model}  |  delay: {args.delay}s")
-    print(f"Flask repo: {FLASK_REPO}")
-    print(f"Token Miser CLI: {token_miser_cli}\n")
+
+    output_lines: list[str] = []
+
+    def emit(line: str = "") -> None:
+        print(line)
+        output_lines.append(line)
+
+    emit(f"Running {len(bugs)} bugs  |  model: {args.model}  |  delay: {args.delay}s")
+    emit(f"Flask repo: {FLASK_REPO}")
+    emit(f"Token Miser CLI: {token_miser_cli}")
+    emit()
 
     results: list[BugResult] = []
     for i, bug in enumerate(bugs, 1):
         files_str = " + ".join(f.split("/")[-1] for f in bug.files)
-        print(f"[{i:2d}/{len(bugs)}] Bug {bug.id} [{files_str}]: {bug.description[:55]}…")
+        emit(f"[{i:2d}/{len(bugs)}] Bug {bug.id} [{files_str}]: {bug.description[:55]}…")
         result = run_bug(bug, client, args.model, token_miser_cli,
-                         verbose=args.verbose, delay=args.delay)
+                         verbose=args.verbose, delay=args.delay, emit=emit)
         results.append(result)
         if result.without_error:
-            print(f"       without error: {result.without_error[:100]}")
+            emit(f"       without error: {result.without_error[:100]}")
         if result.with_error:
-            print(f"       with error:    {result.with_error[:100]}")
+            emit(f"       with error:    {result.with_error[:100]}")
+        if i < len(bugs):
+            emit(f"       waiting {args.inter_delay}s before next bug…")
+            time.sleep(args.inter_delay)
 
-    print()
-    print("── Per-bug results ──────────────────────────────────────────────────────────")
-    print(format_per_bug_table(results))
-    print()
-    print("── Summary ──────────────────────────────────────────────────────────────────")
-    print(format_summary_table(results))
+    emit()
+    emit("── Per-bug results ──────────────────────────────────────────────────────────")
+    emit(format_per_bug_table(results))
+    emit()
+    emit("── Summary ──────────────────────────────────────────────────────────────────")
+    emit(format_summary_table(results))
+
+    out_path = Path("benchmark_flask_result.txt")
+    out_path.write_text("\n".join(output_lines) + "\n", encoding="utf-8")
+    print(f"\nResults written to {out_path.resolve()}")
 
 
 if __name__ == "__main__":
