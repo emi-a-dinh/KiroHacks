@@ -235,3 +235,14 @@
 **Issues encountered:** Benchmark run failed with "Kiro executable '/path/to/kiro' not found on PATH" because the config had a placeholder value from the earlier session.
 
 **Open items:** Ready to retry the benchmark run. Still need to verify Kiro accepts stdin input for automated prompt delivery.
+
+## 2026-05-02 — Benchmark manual setup walkthrough
+
+**What changed:**
+- `.kiro/memory.md` — appended session summaries
+
+**Decisions made:** The automated benchmark driver's stdin-based prompt delivery won't work with Kiro since it's an Electron GUI app that doesn't read chat input from stdin. For now, the benchmark needs to be run manually: proxy in Terminal 1, Kiro launched with proxy env vars in Terminal 2, prompts pasted manually.
+
+**Issues encountered:** User tried `curl localhost:8080` and got connection refused — the proxy wasn't running because the automated `benchmark run` command failed at the kiro_path validation step before starting the proxy. Walked through the two-terminal manual setup instead.
+
+**Open items:** Need to build an AppleScript-based (or similar) prompt sender to replace stdin delivery for macOS. This would use `osascript` to type prompts into Kiro's chat window programmatically. The rest of the automation (proxy, power management, response detection, reporting) works fine — only the prompt delivery mechanism needs changing.
