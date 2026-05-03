@@ -373,3 +373,17 @@
 **Issues encountered:** Divergent branches required explicit `--no-edit` merge. Stash/pop cycle was clean with no conflicts this time.
 
 **Open items:** User is proceeding with the 3-prompt baseline benchmark run.
+
+## 2026-05-02 — Baseline complete, set up treatment run
+
+**What changed:**
+- `flask_project/src/flask/app.py` — reset to buggy state (git checkout)
+- `.kiro/settings/mcp.json` — set `disabled: false` to re-enable token-miser
+- `~/.kiro/settings/mcp.json` — set `disabled: false` for user-level Power entry
+- `.kiro/steering/token-miser.md.disabled` → `.kiro/steering/token-miser.md` — restored steering file
+
+**Decisions made:** Reset Flask project between runs so treatment starts from the same buggy state as baseline. Both workspace and user-level MCP configs re-enabled.
+
+**Issues encountered:** None — baseline completed successfully with 3 prompts.
+
+**Open items:** User is launching fresh Kiro for treatment run with `NO_PROXY` and running auto-prompter with `--run-type treatment` (adds miser-plan prefix).
