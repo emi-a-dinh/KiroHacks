@@ -107,3 +107,14 @@
 **Issues encountered:** Original addon only handled JSON responses — Kiro uses binary Amazon Event Stream format. Iteratively debugged by adding response snippets to JSONL, discovered the `{"unit": "credit", "usage": 0.213}` event in the stream tail. Also discovered Kiro ignores macOS system proxy — must launch with `HTTPS_PROXY` env var.
 
 **Open items:** Full 10-session benchmark run not yet completed. `example_project/` may need reset from main between runs (`git checkout main -- example_project/`). Branch `test/benchmark-kiro-power` created for testing.
+
+## 2026-05-02 — Token Miser power onboarding and MCP fix
+
+**What changed:**
+- `.kiro/settings/mcp.json` — updated `command` from `python` (not found) to `.venv/bin/python` absolute path, and updated `args` path to match current workspace location
+
+**Decisions made:** Used the `.venv` Python (3.12) instead of system Python 3.13 because 3.13 had SSL certificate issues preventing `pip install`. Installed `mcp` SDK into `.venv` since it was the only environment that could reach PyPI.
+
+**Issues encountered:** Power activation showed "No tools available" and MCP server was not connected. Root cause: config pointed to `python` (not on PATH) with a stale workspace path. System Python 3.13 existed but had SSL cert verification failures. Resolved by installing `mcp` into `.venv` and updating config to use `.venv/bin/python`.
+
+**Open items:** The `__pycache__/` and `.context-lens/` files are tracked by git despite being in `.gitignore` — they show as modified in `git status`. Should run `git rm --cached` on them to stop tracking.
