@@ -1,13 +1,39 @@
+---
+name: "token-miser"
+displayName: "Token Miser"
+description: "Index a codebase and select only the relevant files, symbols, and call graph context for coding tasks"
+keywords: ["token miser", "miser", "miser_fix", "miser_ask", "miser_plan", "context", "codebase", "index", "tokens", "signatures", "call graph", "mcp"]
+author: "KiroHacks"
+---
+
 # Token Miser
 
 You are working inside a code repository.
 Before reading large amounts of code or selecting files manually, you must use Token Miser.
+
+## Available MCP Server
+
+### token-miser
+
+The `token-miser` MCP server provides repository indexing and focused context selection tools.
 
 ## Available commands
 
 - `miser_fix` — For bug fixes or implementation tasks
 - `miser_ask` — For questions about the codebase
 - `miser_plan` — For multi-step or unclear tasks
+
+## How to prompt
+
+Use command-style prompts when you want Token Miser to run first:
+
+```text
+miser_fix Add auth middleware and user attribution before writes
+miser_ask How does idea creation work?
+miser_plan Add moderation states to ideas
+```
+
+When a prompt starts with `miser_fix`, `miser_ask`, or `miser_plan`, call the matching MCP tool before using workspace search or file reads.
 
 ## Rules
 

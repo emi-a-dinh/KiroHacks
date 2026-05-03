@@ -47,10 +47,17 @@ STOP_WORDS = {
 ALIASES = {
     "read":           {"get", "fetch", "retrieve", "query", "list"},
     "write":          {"post", "create", "insert", "add", "save"},
+    "writes":         {"write", "post", "create", "insert", "add", "save"},
+    "writing":        {"write", "post", "create", "insert", "add", "save"},
     "update":         {"put", "patch", "modify", "edit", "change"},
+    "updated":        {"update", "put", "patch", "modify", "edit", "change"},
     "remove":         {"delete", "destroy", "drop"},
     "own":            {"owner", "ownership", "user_id", "belongs"},
     "owns":           {"owner", "ownership", "user_id", "belongs"},
+    "attribution":    {"attribute", "createdby", "created", "creator", "owner", "user"},
+    "attribute":      {"attribution", "createdby", "created", "creator", "owner", "user"},
+    "created":        {"create", "createdby", "creator", "owner", "user"},
+    "createdby":      {"created", "creator", "owner", "user"},
     "authorization":  {"auth", "permission", "forbidden", "403", "authorize"},
     "authenticated":  {"auth", "session", "login", "logged"},
     "authentication": {"auth", "session", "login", "register", "password"},
@@ -111,11 +118,19 @@ def _tokenize(text: str) -> Set[str]:
                 s = s.lower()
                 if len(s) > 1 and s not in STOP_WORDS:
                     tokens.add(s)
+                    if len(s) > 3 and s.endswith("s"):
+                        tokens.add(s[:-1])
+                    if len(s) > 4 and s.endswith("ed"):
+                        tokens.add(s[:-2])
 
         # Also add the full word lowered
         lowered = word.lower()
         if len(lowered) > 1 and lowered not in STOP_WORDS:
             tokens.add(lowered)
+            if len(lowered) > 3 and lowered.endswith("s"):
+                tokens.add(lowered[:-1])
+            if len(lowered) > 4 and lowered.endswith("ed"):
+                tokens.add(lowered[:-2])
 
     return tokens
 
@@ -127,6 +142,40 @@ def _expand_aliases(tokens: Set[str]) -> Set[str]:
         if token in ALIASES:
             expanded.update(ALIASES[token])
     return expanded
+
+
+def _is_route_unit(unit: "CodeUnit") -> bool:
+    """Return true for route handler units and route-like file paths."""
+    return unit.unit_type == "route" or "/routes/" in f"/{unit.file_path.lower()}"
+
+
+def _task_wants_write_endpoint(task_tokens: Set[str], expanded_tokens: Set[str]) -> bool:
+    """Detect tasks that need write endpoint context."""
+    write_terms = {"write", "writes", "writing", "post", "put", "patch", "delete", "create", "update", "insert", "save"}
+    endpoint_terms = {"route", "endpoint", "handler", "api", "middleware", "auth", "authentication", "authorization"}
+    return bool((task_tokens | expanded_tokens) & write_terms) and bool((task_tokens | expanded_tokens) & endpoint_terms)
+
+
+def _route_method(unit: "CodeUnit") -> str:
+    """Extract HTTP method from route unit symbol/signature."""
+    text = f"{unit.symbol_name} {unit.signature}".lower()
+    for method in ("post", "put", "patch", "delete", "get"):
+        if re.search(rf"\b{method}\b|^{method}_", text):
+            return method
+    return ""
+
+
+def _route_expression_code(unit: "CodeUnit") -> str:
+    """Return the route call expression without imported context prefix."""
+    if unit.unit_type != "route":
+        return unit.full_code
+    return unit.full_code.rsplit("\n\n", 1)[-1]
+
+
+def _is_public_auth_route(unit: "CodeUnit") -> bool:
+    """Detect login/register auth routes that normally should not require auth."""
+    text = f"{unit.file_path} {unit.symbol_name} {unit.signature}".lower()
+    return "/routes/auth" in f"/{unit.file_path.lower()}" or "login" in text or "register" in text
 
 
 # ── Shared name token check (improvement #3) ──────────────────────────────────
@@ -229,6 +278,45 @@ def _score_unit(
     if code_overlap:
         pts = min(3, len(code_overlap))
         score += pts
+
+    # Route/write endpoint targeting. General parsers often miss route
+    # handlers, so route units need enough weight to beat broad auth matches.
+    wants_write_endpoint = _task_wants_write_endpoint(task_tokens, expanded_tokens)
+    if _is_route_unit(unit):
+        method = _route_method(unit)
+        write_methods = {"post", "put", "patch", "delete"}
+        if wants_write_endpoint and method in write_methods:
+            score += 18
+            reasons.append(f"write route endpoint: {method.upper()}")
+        elif "route" in expanded_tokens or "endpoint" in expanded_tokens:
+            score += 8
+            reasons.append("route endpoint")
+
+        if {"auth", "middleware"} & expanded_tokens and method in write_methods:
+            route_expression = _route_expression_code(unit).lower()
+            if "requireauth" not in route_expression:
+                score += 8
+                reasons.append("write route missing requireAuth")
+            else:
+                score += 3
+                reasons.append("authenticated write route pattern")
+
+        if "createdby" in expanded_tokens and "createdby" in unit.full_code.lower():
+            score += 6
+            reasons.append("route handles user attribution")
+
+    # For backend write/auth tasks, keep the selection focused on backend
+    # routes/services. Otherwise generic auth/user aliases pull in UI and shared
+    # type definitions, which tempts the agent to read files manually.
+    if wants_write_endpoint:
+        lower_path = unit.file_path.lower()
+        if _is_public_auth_route(unit) and not ({"login", "register"} & task_tokens):
+            score = 0.0
+            reasons = []
+        elif lower_path.startswith("apps/web/") or lower_path.startswith("packages/shared/"):
+            score *= 0.35
+            if score > 0:
+                reasons.append("deprioritized non-backend context")
 
     return score, reasons
 
@@ -382,6 +470,7 @@ def select_units(
 
     # ── Phase 6: Coverage-based confidence (improvement #5) ────────────────
     coverage = {}
+    wants_write_endpoint = _task_wants_write_endpoint(task_tokens, expanded_tokens)
 
     # target_found: did we find a unit whose name directly matches the task?
     coverage["target_found"] = any(
@@ -389,6 +478,12 @@ def select_units(
         set(su.unit.symbol_name.lower().split("_")) & task_tokens
         for su in selected
     )
+
+    if wants_write_endpoint:
+        coverage["write_endpoint_found"] = any(
+            _is_route_unit(su.unit) and _route_method(su.unit) in {"post", "put", "patch", "delete"}
+            for su in selected
+        )
 
     # similar_pattern_found: did we find a same-file sibling with a shared name?
     coverage["similar_pattern_found"] = any(
@@ -424,6 +519,8 @@ def select_units(
 
     if coverage.get("target_found"):
         confidence += 0.20
+    if coverage.get("write_endpoint_found"):
+        confidence += 0.25
     if coverage.get("similar_pattern_found") or coverage.get("dependency_found"):
         confidence += 0.15
     if coverage.get("test_found"):
@@ -432,6 +529,8 @@ def select_units(
         confidence += 0.15
 
     confidence = min(confidence, 1.0)
+    if wants_write_endpoint and not coverage.get("write_endpoint_found"):
+        confidence = min(confidence, 0.55)
 
     if confidence >= 0.75:
         conf_label = "high"

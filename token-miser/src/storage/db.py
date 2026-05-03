@@ -37,6 +37,11 @@ CREATE INDEX IF NOT EXISTS idx_units_file ON units(file_path);
 CREATE INDEX IF NOT EXISTS idx_units_symbol ON units(symbol_name);
 CREATE INDEX IF NOT EXISTS idx_edges_caller ON edges(caller_id);
 CREATE INDEX IF NOT EXISTS idx_edges_callee ON edges(callee_id);
+
+CREATE TABLE IF NOT EXISTS metadata (
+    key   TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
 """
 
 
@@ -233,6 +238,25 @@ class Database:
         """Get total number of units."""
         cursor = self.conn.execute("SELECT COUNT(*) FROM units")
         return cursor.fetchone()[0]
+
+    # Metadata operations
+
+    def get_metadata(self, key: str) -> Optional[str]:
+        """Get a metadata value by key."""
+        cursor = self.conn.execute("SELECT value FROM metadata WHERE key = ?", (key,))
+        row = cursor.fetchone()
+        return row["value"] if row else None
+
+    def set_metadata(self, key: str, value: str):
+        """Set a metadata value."""
+        self.conn.execute(
+            """
+            INSERT INTO metadata (key, value)
+            VALUES (?, ?)
+            ON CONFLICT(key) DO UPDATE SET value = excluded.value
+            """,
+            (key, value),
+        )
     
     # Edge operations
     

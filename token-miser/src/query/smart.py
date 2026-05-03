@@ -28,7 +28,13 @@ def _ensure_index(repo_path: str) -> str:
     index_path = str(repo / ".token-miser" / "index.db")
 
     if Path(index_path).exists():
-        return index_path
+        from storage.db import Database
+        from indexer.core import PARSER_VERSION, run_index
+        with Database(index_path) as db:
+            if db.get_metadata("parser_version") == PARSER_VERSION:
+                return index_path
+        result = run_index(repo_path)
+        return result.index_path
 
     from indexer.core import run_index
     result = run_index(repo_path)
@@ -165,15 +171,15 @@ def run_fix(
     lines.append("")
 
     lines.append("## Instructions")
-    lines.append("1. Implement the fix using the code above as context.")
-    lines.append("2. Follow patterns from similar functions in the same file.")
-    lines.append("3. Update or add tests to cover the change.")
-    lines.append("4. Run tests if a test runner is available.")
-    lines.append("5. Summarize what changed.")
+    lines.append("1. Implement the fix using only the Selected Code above.")
+    lines.append("2. Do not search the workspace, list directories, or read additional files after this tool result.")
+    lines.append("3. If the Selected Code is insufficient, stop and say exactly what context is missing instead of reading files.")
+    lines.append("4. Apply edits directly to the file paths shown in the Selected Code.")
+    lines.append("5. Run tests if a test runner is available, then summarize what changed.")
     lines.append("")
     lines.append(f"Selection confidence: {result.confidence_label}")
     if result.confidence_label == "low":
-        lines.append("Consider expanding additional units if the context is insufficient.")
+        lines.append("Selection confidence is low. Ask the user before using workspace search or reading files.")
 
     return "\n".join(lines)
 

@@ -9,7 +9,31 @@ from .scanner import scan_repository, detect_moves
 from .parser_python import parse_python_file
 from .parser_treesitter import parse_with_treesitter, TREE_SITTER_AVAILABLE
 from .parser_regex import parse_with_regex
+from .parser_routes import parse_route_handlers
 from .edge_builder import build_edges
+
+
+PARSER_VERSION = "3-route-handler-units"
+
+
+def _with_supplemental_units(
+    file_path: str,
+    source: str,
+    language: str,
+    units: List[CodeUnit],
+) -> List[CodeUnit]:
+    """Add domain-specific units that general parsers usually miss."""
+    supplemental = parse_route_handlers(file_path, source, language)
+    if not supplemental:
+        return units
+
+    seen = {(unit.start_line, unit.end_line, unit.symbol_name) for unit in units}
+    for unit in supplemental:
+        key = (unit.start_line, unit.end_line, unit.symbol_name)
+        if key not in seen:
+            units.append(unit)
+            seen.add(key)
+    return units
 
 
 def parse_file(file_path: str, source: str, language: str) -> List[CodeUnit]:
@@ -25,17 +49,17 @@ def parse_file(file_path: str, source: str, language: str) -> List[CodeUnit]:
     if TREE_SITTER_AVAILABLE:
         units = parse_with_treesitter(file_path, source, language)
         if units:
-            return units
+            return _with_supplemental_units(file_path, source, language, units)
     
     # Fall back to Python AST for Python files
     if language == "python":
         units = parse_python_file(file_path, source)
         if units:
-            return units
+            return _with_supplemental_units(file_path, source, language, units)
     
     # Fall back to regex
     units = parse_with_regex(file_path, source, language)
-    return units
+    return _with_supplemental_units(file_path, source, language, units)
 
 
 def run_index(repo_path: str, index_path: Optional[str] = None) -> IndexResult:
@@ -71,6 +95,7 @@ def run_index(repo_path: str, index_path: Optional[str] = None) -> IndexResult:
     with Database(index_path) as db:
         # Get existing files from DB
         existing_files = db.get_all_files()  # path -> hash
+        force_reindex = db.get_metadata("parser_version") != PARSER_VERSION
         
         # Scan repository
         scanned_files = scan_repository(str(repo))
@@ -119,12 +144,14 @@ def run_index(repo_path: str, index_path: Optional[str] = None) -> IndexResult:
         for path in common_paths:
             if existing_files[path] != scanned_hashes[path]:
                 changed_paths.add(path)
-        
+
+        force_paths = scanned_paths if force_reindex else set()
+
         # Files to process (new + changed)
-        paths_to_process = new_paths | changed_paths
-        
+        paths_to_process = new_paths | changed_paths | force_paths
+
         # Skip unchanged files
-        result.files_skipped = len(common_paths - changed_paths)
+        result.files_skipped = len(common_paths - changed_paths - force_paths)
         
         # Process files that need updating
         for path in paths_to_process:
@@ -138,7 +165,7 @@ def run_index(repo_path: str, index_path: Optional[str] = None) -> IndexResult:
                 continue
             
             # Delete old units if this is an update
-            if path in changed_paths:
+            if path in changed_paths or path in force_paths:
                 db.delete_units_for_file(path)
             
             # Upsert file record
@@ -163,7 +190,8 @@ def run_index(repo_path: str, index_path: Optional[str] = None) -> IndexResult:
         edges = build_edges(all_units)
         db.insert_edges(edges)
         result.call_edges = len(edges)
-        
+        db.set_metadata("parser_version", PARSER_VERSION)
+
         db.commit()
     
     result.index_time_seconds = round(time.time() - start_time, 2)

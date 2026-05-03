@@ -1,2 +1,0 @@
-# Core dependencies (all optional - graceful fallback if not available)
-tree-sitter-languages>=1.10.0

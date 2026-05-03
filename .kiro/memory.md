@@ -39,3 +39,44 @@
 **Issues encountered:** Initial `cp -r context-lens token-miser` nested the folder incorrectly — had to redo with `cp -r context-lens/ token-miser/`. Python 3.9 compatibility required replacing `str | None` union syntax with `Optional[str]`.
 
 **Open items:** `context-lens/` folder can be deleted once token-miser is confirmed stable. Should add `.gitignore` for `__pycache__/`, `.token-miser/`, `.context-lens/` dirs.
+
+## 2026-05-02 — Activate Token Miser power in workspace
+
+**What changed:**
+- `.kiro/steering/token-miser.md` — copied from `token-miser/steering/` so Kiro auto-includes it
+- `.kiro/hooks/miser-reindex-on-save.kiro.hook` — copied from `token-miser/hooks/` to activate file-save re-indexing
+- `.kiro/hooks/miser-reindex-on-delete.kiro.hook` — copied from `token-miser/hooks/` to activate file-delete re-indexing
+
+**Decisions made:** Local Kiro Powers aren't auto-installed from a subfolder — steering and hooks must live in `.kiro/` to be active. MCP config was already in `~/.kiro/settings/mcp.json` from earlier.
+
+**Issues encountered:** None.
+
+**Open items:** If Token Miser is published as a proper Kiro Power in the registry, the manual copy step goes away. For now this is the correct local setup.
+
+## 2026-05-02 — Full build session: PRD → Context Lens → Token Miser
+
+**What changed:**
+- `start.md` — wrote full PRD iteratively: signature-level indexing, call edges, move detection, MCP server, Kiro Power distribution
+- `context-lens/` — built complete implementation: indexer (Python AST + tree-sitter + regex fallback), SQLite storage, edge builder, signature map formatter, expander, tree view, CLI (`lens`), MCP server
+- `example_project/` — Flask task management API with 10 deliberate issues (auth bypass, missing pagination, MD5 passwords, N+1 queries, incomplete tests)
+- `token-miser/` — renamed from context-lens: CLI (`miser fix/ask/plan/tree/index`), MCP tools (`miser_fix/ask/plan`), v2 selector with 6 improvements
+- `token-miser/src/query/selector.py` — v2: camelCase tokenizer fix, domain alias expansion, stricter siblings, smarter test discovery, coverage-based confidence, explainable selection with reasons
+- `token-miser/src/query/smart.py` — combines index + select + expand into single `run_fix/ask/plan` calls, outputs coverage block
+- `.kiro/steering/token-miser.md`, `.kiro/hooks/miser-reindex-*` — activated in workspace
+
+**Decisions made:** Two-phase architecture (signature map → expand) offloads relevance judgment to the LLM. Hooks keep index fresh on save/delete so smart commands skip re-indexing. `context-lens/` kept as reference. Token Miser is the user-facing name.
+
+**Issues encountered:** Python 3.9 compatibility (union types), `cp -r` nesting, relative imports across package boundaries (solved with lazy imports and `sys.path` manipulation).
+
+**Open items:** Kiro Powers can be installed from local folders — the manual `.kiro/` copy may be redundant if installed via the Powers panel. Should add `.gitignore` for `__pycache__/` and index DBs. `context-lens/` can be deleted once token-miser is stable.
+
+## 2026-05-02 — Fix token-miser MCP server connection timeout
+
+**What changed:**
+- `token-miser/mcp.json` — changed Python path from `/usr/bin/python3` (system 3.9.6) to `/Library/Frameworks/Python.framework/Versions/3.13/bin/python3` (actual working 3.13.1)
+
+**Decisions made:** Used the absolute path to the correct Python rather than just `python3` to avoid PATH ambiguity across different project contexts.
+
+**Issues encountered:** Other projects couldn't connect to the token-miser MCP server (timeout error -32001). Root cause: `mcp.json` pointed to macOS system Python 3.9 which lacked `tree_sitter_languages` and potentially had compatibility issues. Verified fix by testing the full MCP initialize handshake.
+
+**Open items:** The other project's `mcp.json` also needs to be updated with the corrected Python path if it has its own copy.

@@ -3,8 +3,8 @@
 import sys
 from pathlib import Path
 
-# Add context-lens/src to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent / "context-lens" / "src"))
+# Add token-miser/src to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent / "token-miser" / "src"))
 
 from indexer.models import FileInfo, CodeUnit, Edge, IndexResult
 
