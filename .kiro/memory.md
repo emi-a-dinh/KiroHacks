@@ -325,3 +325,14 @@
 **Issues encountered:** Running `python benchmark/auto_prompter.py` directly caused `ModuleNotFoundError: No module named 'benchmark'` because Python didn't recognize the package context. Fix: run as `-m benchmark.auto_prompter` instead, which sets up the package imports correctly.
 
 **Open items:** User is testing the auto-prompter with the baseline run.
+
+## 2026-05-02 — Auto-prompter: switch to clipboard paste
+
+**What changed:**
+- `benchmark/auto_prompter.py` — replaced AppleScript `keystroke` with clipboard-based approach: `pbcopy` to copy prompt to clipboard, then `Cmd+V` to paste into Kiro, then `Return` to send. Increased delays (1s activate, 0.5s after paste).
+
+**Decisions made:** AppleScript `keystroke` fails silently with long text and special characters (backticks, quotes common in the Flask bug prompts). Clipboard paste via `pbcopy` + `Cmd+V` handles arbitrary text reliably.
+
+**Issues encountered:** Auto-prompter showed "Sending prompt" and "Waiting for response" but nothing appeared in Kiro's chat. Root cause: `keystroke` with 312-char text containing backticks and quotes was silently failing.
+
+**Open items:** User is retesting with the clipboard approach. Need to verify Kiro's chat input is focused when the paste happens.
