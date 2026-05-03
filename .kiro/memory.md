@@ -398,3 +398,18 @@
 **Issues encountered:** None.
 
 **Open items:** User is running the treatment auto-prompter. After both runs complete, analyze `tokens.jsonl` to compare baseline vs treatment credit usage.
+
+## 2026-05-02 — Benchmark results: treatment 3x more expensive
+
+**What changed:**
+- `.kiro/memory.md` — appended session summary with benchmark results
+
+**Decisions made:** Split JSONL entries at the 234-second gap (entry 25→26) and context % reset (3.6%→2.6%) to identify baseline vs treatment boundary.
+
+**Issues encountered:** None — both runs completed successfully via the auto-prompter.
+
+**Open items:**
+- **Key finding:** Treatment (with token-miser Power) cost 11,807 mc across 56 API calls vs baseline 3,994 mc across 25 calls. Treatment is ~3x more expensive, not cheaper. The Power doubles the API call count due to MCP tool invocations.
+- Flask project at 2-5% context usage is still too small for the signature-map approach to pay off. Need a project that pushes context to 50%+ for the Power to show savings.
+- The `flask_project/.token-miser/` index was created during treatment — not committed.
+- Consider testing with a monorepo or very large codebase where full-file reads are expensive.
