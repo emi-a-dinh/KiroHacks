@@ -279,3 +279,16 @@
 **Issues encountered:** MCP server connection error (-32000) when launching Kiro with proxy env vars. Root cause: `HTTP_PROXY`/`HTTPS_PROXY` env vars cause Kiro to route ALL connections through mitmproxy, including local MCP server connections which then fail.
 
 **Open items:** The automation driver should be updated to include `NO_PROXY=localhost,127.0.0.1` in the env vars it sets when launching Kiro. User is proceeding with manual benchmark run.
+
+## 2026-05-02 — Fix user-level MCP config for benchmark
+
+**What changed:**
+- `~/.kiro/settings/mcp.json` — fixed `power-token-miser-token-miser` entry: corrected Python path from `/Library/.../python3` to `.venv/bin/python`, corrected args path from `/Users/edinhdawg/...` to `/Users/tayingthao/...`, set `disabled: true` for baseline run
+- `.kiro/settings/mcp.json` — already had `disabled: true` (confirmed correct)
+- `.kiro/steering/token-miser.md` → `.kiro/steering/token-miser.md.disabled` — renamed by user for baseline run
+
+**Decisions made:** There are TWO MCP configs: workspace-level (`.kiro/settings/mcp.json`) and user-level (`~/.kiro/settings/mcp.json`). The user-level one has a `powers` section with `power-token-miser-token-miser` that was still enabled and pointing to a stale path. Both need to be disabled for baseline. The automation driver's PowerManager should be updated to handle both config locations.
+
+**Issues encountered:** MCP error persisted after disabling workspace mcp.json because the user-level config had a separate Power entry still enabled with a wrong path from a different machine.
+
+**Open items:** PowerManager in automation_driver.py only manages workspace-level `.kiro/settings/mcp.json`. It should also manage `~/.kiro/settings/mcp.json` powers section. User is retrying the Kiro launch.
