@@ -541,3 +541,14 @@
 **Issues encountered:** None — reference session only.
 
 **Open items:** User may run the benchmark next. The auto-prompter uses clipboard paste (`pbcopy` + `Cmd+V`) since Kiro doesn't accept stdin input.
+
+## 2026-05-02 — Discovered kiro chat CLI subcommand
+
+**What changed:**
+- No code changes — discovery session only
+
+**Decisions made:** Found that `kiro chat -m agent "prompt"` accepts prompts as CLI arguments and can read from stdin. This replaces the broken AppleScript/clipboard approach and makes the automation driver's subprocess-based prompt delivery viable. Key flags: `-m agent` for agent mode, `-r` to reuse window, `-a` to add context files.
+
+**Issues encountered:** None.
+
+**Open items:** Update `automation_driver.py` to use `kiro chat` instead of launching the GUI app and piping to stdin. Each turn becomes a `kiro chat -m agent "prompt" -r` subprocess call. This also simplifies session boundaries — each `kiro chat` invocation is already a fresh conversation, so `new_conversation()` may just be a no-op or a brief delay. Need to verify `-r` behavior with proxy env vars.
