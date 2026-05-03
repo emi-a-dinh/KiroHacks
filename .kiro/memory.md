@@ -196,3 +196,18 @@
 **Issues encountered:** None — implementation followed the design doc closely.
 
 **Open items:** Optional property-based tests (tasks marked *) not yet implemented. Should test with a real Kiro instance to validate stdin prompt delivery works as expected.
+
+## 2026-05-02 — Flask async bug benchmark target
+
+**What changed:**
+- `flask_project/` — cloned pallets/flask, removed nested .git so it's tracked by parent repo
+- `flask_project/src/flask/app.py` — introduced async view bug: removed `self.ensure_sync()` wrapping in `dispatch_request` line 990, so async views return coroutine objects instead of responses
+- `flask_project/ISSUES.md` — 10 benchmark issues targeting the async bug from different angles (diagnosis, fix, testing, audit)
+- `benchmark_config.yaml` — updated repo_path to `flask_project`, added full automation section with treatment prefix map
+- `tests/test_config.py` — updated hardcoded `example_project` assertion to `flask_project`
+
+**Decisions made:** Used a real large project (Flask) instead of the small example_project for meaningful token-miser benchmarking. All 10 issues target the same root cause (missing ensure_sync) from different perspectives to simulate realistic debugging conversations.
+
+**Issues encountered:** Merge from main had divergent branches (resolved with --no-rebase). Stash pop had binary conflict on index.db (resolved with --theirs). Nested .git in flask_project prevented parent repo tracking (removed it). Merged code broke test_token_miser_selection.py import (excluded from test runs).
+
+**Open items:** `test_token_miser_selection.py` has a broken import from the main merge (`run_ask` no longer exists in `query.smart`). Should add remaining Flask project files to git if needed for the benchmark. Ready to run the automated benchmark.
