@@ -15,7 +15,7 @@ mcp = FastMCP("token-miser")
 
 @mcp.tool()
 def miser_context(task: str, repo_path: str = ".", error_log: str | None = None) -> str:
-    """Select relevant code units and return signatures only (~300–800 tokens).
+    """Select relevant code units and return signatures only.
 
     Use this first for any fix, question, or planning task.
     Call miser_read(symbol_name) to fetch full source of any unit shown.
@@ -25,6 +25,11 @@ def miser_context(task: str, repo_path: str = ".", error_log: str | None = None)
         repo_path: Path to repo root.
         error_log: Optional error traceback or log.
     """
+    if len(task.strip().split()) < 6:
+        return (
+            "Task description too short to select reliably. "
+            "Describe the symptom in a full sentence for best results."
+        )
     from query.smart import run_context
     return run_context(task, repo_path=repo_path, error_log=error_log)
 

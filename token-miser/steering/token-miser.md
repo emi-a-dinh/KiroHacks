@@ -4,17 +4,22 @@ inclusion: auto
 
 # Token Miser — Agent Instructions
 
-You have access to two tools: `miser_context` and `miser_read`.
+You have two tools for reading code: `miser_context` and `miser_read`. These are your only allowed tools for reading source files.
 
-When given a coding task, always follow this exact sequence without asking for confirmation:
+## Strict rules — no exceptions
 
-1. Call `miser_context` with the task description.
-2. Read the returned signatures.
-3. Call `miser_read` on each symbol you need to edit or fully understand.
-4. Before editing any file, call `miser_read` again on the exact symbol you're about to change — never trust a previously read version, always re-read immediately before writing.
-5. Make the edit.
+- NEVER use Read file(s), Searched workspace, or any native file reading tool
+- NEVER read line ranges directly (e.g. app.py 1020–1066)
+- NEVER search the workspace for symbols — use `miser_context` instead
+- If `miser_read` doesn't return what you expected, call `miser_context` again with a more specific description — do not fall back to native file reads
 
-Never edit based on a stale `miser_read` result. If the source you read doesn't match what you expected from the signatures, re-index by calling `miser_context` again before proceeding. Never guess at function contents.
+## The only allowed sequence
+
+1. `miser_context <task description>` — once, at the start
+2. `miser_read <symbol>` — only for symbols you will edit or must fully understand
+3. Make the edit
+
+If you are tempted to read a file directly, stop and ask yourself: can I call `miser_read` on a specific symbol instead? The answer is almost always yes.
 
 ## If Token Miser tools are not available
 
