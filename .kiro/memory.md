@@ -440,3 +440,16 @@
 **Issues encountered:** Had to use `PYTHONPATH=flask_project/src` to run the test against the local buggy Flask source instead of the system-installed Flask.
 
 **Open items:** User needs to run baseline (Power disabled) then treatment (Power enabled) with the new prompts. Score based on whether Kiro finds and fixes the bug correctly.
+
+## 2026-05-02 — Treatment run setup for error-based prompts
+
+**What changed:**
+- `flask_project/src/flask/app.py` — reset to buggy state via git checkout
+- Verified both MCP configs (workspace + user-level) already had `disabled: false` from previous treatment run
+- Verified steering file already restored at `.kiro/steering/token-miser.md`
+
+**Decisions made:** None — quick setup for treatment run.
+
+**Issues encountered:** None — all configs were already in the right state from the previous treatment run.
+
+**Open items:** User is running the treatment auto-prompter with `--run-type treatment`. After completion, analyze results comparing baseline vs treatment on the error-based "fix the bug" prompts.
