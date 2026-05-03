@@ -118,3 +118,15 @@
 **Issues encountered:** Power activation showed "No tools available" and MCP server was not connected. Root cause: config pointed to `python` (not on PATH) with a stale workspace path. System Python 3.13 existed but had SSL cert verification failures. Resolved by installing `mcp` into `.venv` and updating config to use `.venv/bin/python`.
 
 **Open items:** The `__pycache__/` and `.context-lens/` files are tracked by git despite being in `.gitignore` — they show as modified in `git status`. Should run `git rm --cached` on them to stop tracking.
+
+## 2026-05-02 — Benchmark analysis: Token Miser adds overhead
+
+**What changed:**
+- `~/.kiro/settings/mcp.json` — fixed user-level MCP config: corrected username (`edinhdawg` → `tayingthao`) and Python path to `.venv/bin/python`
+- No code changes to benchmark tool itself
+
+**Decisions made:** Analyzed full `tokens.jsonl` from a real benchmark run. Key finding: Token Miser is **more expensive** than baseline for `example_project`. Baseline requests cost ~130-270 mc each at ~2.5% context. Treatment requests with MCP tool calls cost ~575-1,087 mc each at ~15% context, with 8-9 MCP calls per turn. The small project size means full-file reads are cheap, while the Power's multi-step indexing/querying/expanding adds significant overhead.
+
+**Issues encountered:** Other Kiro window couldn't connect to MCP server — user-level config had wrong username and Python path from a different machine. Fixed by updating `~/.kiro/settings/mcp.json`. Also clarified that steering files (`.kiro/steering/`) are auto-included in every conversation, so baseline runs need the steering file removed/renamed to be truly "no Power."
+
+**Open items:** User wants to plan automation improvements to the benchmark before building them. Key ideas: automated prompt injection, consistent timing, better session boundary tracking. The finding that Token Miser adds overhead on small projects is worth investigating — may need larger/more complex projects to see token savings.
