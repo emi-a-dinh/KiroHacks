@@ -39,23 +39,31 @@ from benchmark.session_script import parse_session_script
 
 
 def _applescript_type_text(text: str) -> None:
-    """Use AppleScript to type text into the frontmost application.
+    """Use AppleScript to paste text into the frontmost application via clipboard.
 
-    Activates Kiro, waits briefly, then uses 'keystroke' to type the text
-    and presses Return to send it.
+    Copies the text to the macOS clipboard using pbcopy, activates Kiro,
+    pastes with Cmd+V, then presses Return to send.
 
     Args:
-        text: The text to type into Kiro's chat.
+        text: The text to paste into Kiro's chat.
     """
-    # Escape backslashes and double quotes for AppleScript string
-    escaped = text.replace("\\", "\\\\").replace('"', '\\"')
+    # Copy text to clipboard via pbcopy
+    proc = subprocess.run(
+        ["pbcopy"],
+        input=text,
+        text=True,
+        capture_output=True,
+    )
+    if proc.returncode != 0:
+        print(f"  [ERROR] pbcopy failed: {proc.stderr.strip()}")
+        return
 
-    script = f'''
+    script = '''
     tell application "Kiro" to activate
-    delay 0.5
+    delay 1
     tell application "System Events"
-        keystroke "{escaped}"
-        delay 0.3
+        keystroke "v" using {command down}
+        delay 0.5
         keystroke return
     end tell
     '''

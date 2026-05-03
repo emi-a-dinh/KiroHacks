@@ -314,3 +314,14 @@
 **Issues encountered:** None — verified `osascript` works and accessibility permissions are granted (System Events returned "Electron" as frontmost app).
 
 **Open items:** Test the auto-prompter with a real benchmark run. May need to handle special characters in prompts (backticks, quotes) that could break AppleScript keystroke. The `Cmd+N` shortcut for new conversation needs verification — might be a different shortcut in Kiro.
+
+## 2026-05-02 — Auto-prompter module invocation fix
+
+**What changed:**
+- `.kiro/memory.md` — appended session summary
+
+**Decisions made:** None — quick fix.
+
+**Issues encountered:** Running `python benchmark/auto_prompter.py` directly caused `ModuleNotFoundError: No module named 'benchmark'` because Python didn't recognize the package context. Fix: run as `-m benchmark.auto_prompter` instead, which sets up the package imports correctly.
+
+**Open items:** User is testing the auto-prompter with the baseline run.
