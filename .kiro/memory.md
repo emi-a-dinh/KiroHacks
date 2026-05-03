@@ -90,3 +90,20 @@
 **Issues encountered:** None.
 
 **Open items:** User flow is well-understood. Potential area to revisit: the confidence scoring in `selector.py` uses a fixed additive model — could be worth tuning thresholds or weighting signals differently based on real-world usage patterns.
+
+## 2026-05-02 — Benchmark tool: credit-based usage capture and docs update
+
+**What changed:**
+- `benchmark/_addon_template.py` — rewrote addon to parse Amazon Event Stream binary format from AWS `generateAssistantResponse` responses; captures `credit_usage` per request (class renamed `UsageCaptureAddon`)
+- `benchmark/reporter.py` — summary table title changed to "Credit Usage Benchmark Comparison", columns now show "Baseline (mc)" / "Treatment (mc)" (millicredits)
+- `.kiro/specs/ai-ide-token-benchmark/requirements.md` — updated Req 2 (proxy) and Req 4 (renamed to "Usage Measurement") to reflect credit-based capture instead of raw tokens
+- `.kiro/specs/ai-ide-token-benchmark/design.md` — updated overview, proxy component, and pseudocode to describe AWS event stream parsing and credit usage metric
+- `benchmark/README.md` — added note explaining credit vs token metric, added Kiro proxy launch instructions (`HTTPS_PROXY` env vars)
+- `tests/test_proxy.py` — updated class name assertions from `TokenCaptureAddon` to `UsageCaptureAddon`
+- `.gitignore` — created to exclude `.venv/`, `__pycache__/`, `.DS_Store`, `benchmark_output/`, etc.
+
+**Decisions made:** Kiro routes through AWS (`generateAssistantResponse`) not Anthropic directly, so raw token counts aren't available. Credit usage (proportional to tokens) is the comparison metric. Internal dataclass field names (`input_tokens`, `output_tokens`) kept for pipeline compatibility; JSONL output includes both `credit_usage` (float) and `millicredits` (int) for clarity.
+
+**Issues encountered:** Original addon only handled JSON responses — Kiro uses binary Amazon Event Stream format. Iteratively debugged by adding response snippets to JSONL, discovered the `{"unit": "credit", "usage": 0.213}` event in the stream tail. Also discovered Kiro ignores macOS system proxy — must launch with `HTTPS_PROXY` env var.
+
+**Open items:** Full 10-session benchmark run not yet completed. `example_project/` may need reset from main between runs (`git checkout main -- example_project/`). Branch `test/benchmark-kiro-power` created for testing.
