@@ -8,6 +8,6 @@
   },
   "then": {
     "type": "runCommand",
-    "command": "python -m pytest tests/ -x -q --tb=short"
+    "command": ".venv/bin/python -m pytest tests/ -x -q"
   }
 }

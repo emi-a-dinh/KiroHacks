@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+benchmark_output/
+.context-lens/index.db
+.context-lens/reindex.log
+.hypothesis/
+.pytest_cache/

@@ -1,0 +1,7 @@
+# AI IDE Token Benchmark Configuration
+repo_path: "example_project"
+prompt_file: "benchmark_output/session_script.json"
+output_dir: "benchmark_output"
+output_format: "json"
+proxy_port: 8080
+timeout_seconds: 120

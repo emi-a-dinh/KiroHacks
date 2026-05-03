@@ -13,6 +13,6 @@
   },
   "then": {
     "type": "runCommand",
-    "command": "python cli.py context-index . --quiet"
+    "command": ".venv/bin/python cli.py context-index . --quiet >> .context-lens/reindex.log 2>&1"
   }
 }

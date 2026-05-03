@@ -1,0 +1,5 @@
+mitmproxy>=10.0
+rich>=13.0
+pyyaml>=6.0
+hypothesis>=6.0
+pytest>=7.0
