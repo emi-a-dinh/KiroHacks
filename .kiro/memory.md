@@ -427,3 +427,16 @@
 - The Power's token savings require a project large enough to push context to 30-50%+ (100+ files, 50K+ lines)
 - For the hackathon, consider demonstrating qualitative benefits (better file selection, focused context) rather than token reduction on a small project
 - Alternatively, find or create a large monorepo-style project for benchmarking
+
+## 2026-05-02 — Pivot to "fix the bug" prompts with error log
+
+**What changed:**
+- `flask_project/test_async_bug.py` — minimal repro script that triggers the async bug and produces error trace (TypeError: return type was a coroutine, RuntimeWarning: coroutine never awaited)
+- `flask_project/ERROR_LOG.md` — captured error trace for reference
+- `benchmark_output/session_script.json` — 3 single-turn sessions with vague "fix the bug" prompts that describe the error without revealing the root cause or location
+
+**Decisions made:** Changed prompts from "here's the bug in dispatch_request, fix it" to "we're getting this error, find and fix it." This tests the Power's real value: using the signature map and call graph to navigate to the right code. Baseline Kiro has to figure it out from scratch. The `miser-fix` prefix in treatment gives the Power the error trace to work with.
+
+**Issues encountered:** Had to use `PYTHONPATH=flask_project/src` to run the test against the local buggy Flask source instead of the system-installed Flask.
+
+**Open items:** User needs to run baseline (Power disabled) then treatment (Power enabled) with the new prompts. Score based on whether Kiro finds and fixes the bug correctly.
