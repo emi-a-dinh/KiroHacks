@@ -530,3 +530,14 @@
 **Issues encountered:** CLI was broken after merge — `run_fix`/`run_ask`/`run_plan` were consolidated into `run_context` in smart.py but CLI still referenced the old names. Fixed by updating all three CLI handlers.
 
 **Open items:** User will test baseline (no context) vs treatment (miser CLI context prepended) on a lower model. Compare whether the miser context helps the model find and fix the dispatch_request bug. No proxy needed for this approach.
+
+## 2026-05-02 — CLI commands reference for benchmark runs
+
+**What changed:**
+- `.kiro/memory.md` — appended session summary
+
+**Decisions made:** Provided the user with the full set of commands for running the benchmark CLI (generate, run, report), manual proxy setup for baseline vs treatment, auto-prompter invocation for both run types, and the test suite. Highlighted the `NO_PROXY=localhost,127.0.0.1` requirement on treatment runs to keep MCP server connections local.
+
+**Issues encountered:** None — reference session only.
+
+**Open items:** User may run the benchmark next. The auto-prompter uses clipboard paste (`pbcopy` + `Cmd+V`) since Kiro doesn't accept stdin input.
