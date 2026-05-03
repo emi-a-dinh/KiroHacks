@@ -387,3 +387,14 @@
 **Issues encountered:** None — baseline completed successfully with 3 prompts.
 
 **Open items:** User is launching fresh Kiro for treatment run with `NO_PROXY` and running auto-prompter with `--run-type treatment` (adds miser-plan prefix).
+
+## 2026-05-02 — Treatment run instructions provided
+
+**What changed:**
+- `.kiro/memory.md` — appended session summary
+
+**Decisions made:** Keep proxy running between baseline and treatment (JSONL appends). Close old Kiro, launch fresh one so it picks up the re-enabled Power config. Treatment auto-prompter uses `--run-type treatment` which adds `miser-plan` prefix.
+
+**Issues encountered:** None.
+
+**Open items:** User is running the treatment auto-prompter. After both runs complete, analyze `tokens.jsonl` to compare baseline vs treatment credit usage.
