@@ -494,3 +494,14 @@
 - Overhead trend across benchmarks: example_project (~500 lines) = 4-5x, flask_project run 1 (~15K lines) = 3.0x, flask_project run 2 = 2.7x
 - The overhead is shrinking as project size increases, suggesting a crossover point around 50-100K lines where the Power starts saving tokens
 - For the hackathon writeup, this trend line is a compelling data point even though the Power doesn't win yet on these projects
+
+## 2026-05-02 — Amazon Event Stream parser explanation
+
+**What changed:**
+- `.kiro/memory.md` — appended session summary
+
+**Decisions made:** None — Q&A session explaining the binary parser in `benchmark/_addon_template.py`.
+
+**Issues encountered:** None.
+
+**Open items:** None from this session. The parser extracts `credit_usage` and `contextUsagePercentage` from AWS `generateAssistantResponse` binary event stream responses intercepted by mitmproxy.
