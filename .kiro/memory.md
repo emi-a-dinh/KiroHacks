@@ -224,3 +224,14 @@
 **Issues encountered:** Merge had divergent branches (used `--no-rebase`). Stash pop had binary conflict on index.db (resolved with `--theirs`). Merged code broke `test_token_miser_selection.py` import (`run_ask` removed from `query.smart`). Config test assertion needed updating after repo_path change.
 
 **Open items:** `test_token_miser_selection.py` still broken from merge — needs import fix. Ready to test the automated benchmark with `kiro` subprocess. Need to verify Kiro accepts stdin input for prompt delivery.
+
+## 2026-05-02 — Fix kiro_path in benchmark config
+
+**What changed:**
+- `benchmark_config.yaml` — changed `kiro_path` from placeholder `/path/to/kiro` to actual path `/usr/local/bin/kiro`
+
+**Decisions made:** Used `which kiro` to find the executable at `/usr/local/bin/kiro`.
+
+**Issues encountered:** Benchmark run failed with "Kiro executable '/path/to/kiro' not found on PATH" because the config had a placeholder value from the earlier session.
+
+**Open items:** Ready to retry the benchmark run. Still need to verify Kiro accepts stdin input for automated prompt delivery.
