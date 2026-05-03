@@ -552,3 +552,14 @@
 **Issues encountered:** None.
 
 **Open items:** Update `automation_driver.py` to use `kiro chat` instead of launching the GUI app and piping to stdin. Each turn becomes a `kiro chat -m agent "prompt" -r` subprocess call. This also simplifies session boundaries — each `kiro chat` invocation is already a fresh conversation, so `new_conversation()` may just be a no-op or a brief delay. Need to verify `-r` behavior with proxy env vars.
+
+## 2026-05-02 — Project overview and branch push
+
+**What changed:**
+- `.kiro/memory.md` — appended this session summary
+
+**Decisions made:** Reviewed full project history via WRITEUP.md and WRITEUP_RESPONSES.md. Confirmed branch name is `test/benchmark-kiro-power`. Pushed branch to GitHub with `-u` flag to set upstream tracking.
+
+**Issues encountered:** None.
+
+**Open items:** Next step is updating `automation_driver.py` to use `kiro chat -m agent` for prompt delivery instead of the broken AppleScript/stdin approach.
