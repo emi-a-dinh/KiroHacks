@@ -292,3 +292,14 @@
 **Issues encountered:** MCP error persisted after disabling workspace mcp.json because the user-level config had a separate Power entry still enabled with a wrong path from a different machine.
 
 **Open items:** PowerManager in automation_driver.py only manages workspace-level `.kiro/settings/mcp.json`. It should also manage `~/.kiro/settings/mcp.json` powers section. User is retrying the Kiro launch.
+
+## 2026-05-02 — Manual prompt delivery confirmed needed
+
+**What changed:**
+- `.kiro/memory.md` — appended session summary
+
+**Decisions made:** Confirmed that the automated stdin-based prompt delivery does not work with Kiro (Electron GUI app). The manual flow requires pasting 40 prompts per run from `benchmark_output/session_script.json` into Kiro's chat. Proxy captures credit usage automatically in the background.
+
+**Issues encountered:** User expected prompts to type automatically after launching Kiro. Clarified that the automation driver's stdin approach is not compatible with Kiro's GUI and the current setup requires manual prompt pasting.
+
+**Open items:** Build an AppleScript-based prompt sender to automate typing into Kiro's chat window on macOS. This would replace the stdin approach in the automation driver and make the 80-prompt benchmark run feasible without manual intervention.
