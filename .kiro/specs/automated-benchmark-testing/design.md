@@ -4,6 +4,8 @@
 
 This design replaces the manual `input()`-driven orchestration loop in the benchmark tool with a fully automated **Automation Driver** that launches Kiro as a subprocess, delivers prompts programmatically via Kiro's CLI stdin, detects response completion by monitoring proxy JSONL idle periods, and manages the token-miser Power state between baseline and treatment runs.
 
+During the treatment run, prompts are prefixed with token-miser MCP tool commands (`miser-fix`, `miser-ask`, `miser-plan`) based on the turn's role, so that Kiro invokes the token-miser context-lens tools. During the baseline run, prompts are delivered verbatim. This ensures the A/B comparison accurately measures the effect of MCP tool-assisted context selection.
+
 The existing modules — `proxy.py` (mitmproxy management), `session_script.py` (script generation), `reporter.py` (report generation), and `models.py` (data structures) — remain unchanged. The changes are concentrated in:
 
 1. **New module `automation_driver.py`** — Contains `AutomationDriver`, `PromptSender`, `ResponseWatcher`, and `PowerManager` classes.
@@ -62,8 +64,8 @@ sequenceDiagram
     O->>AD: start_kiro()
     loop Each Session
         loop Each Turn
-            AD->>PS: send_prompt(text)
-            PS->>KP: write to stdin
+            AD->>PS: send_prompt(text, "baseline", role)
+            PS->>KP: write verbatim to stdin
             AD->>RW: wait_for_response()
             RW->>PX: read_new_entries()
             RW-->>AD: turn complete / timeout
@@ -78,7 +80,9 @@ sequenceDiagram
     O->>AD: start_kiro()
     loop Each Session
         loop Each Turn
-            AD->>PS: send_prompt(text)
+            AD->>PS: send_prompt(text, "treatment", role)
+            PS->>PS: _apply_prefix(text, role)
+            PS->>KP: write prefixed prompt to stdin
             AD->>RW: wait_for_response()
             RW-->>AD: turn complete / timeout
         end
@@ -103,11 +107,13 @@ class AutomationConfig:
     idle_timeout: int = 30            # Seconds of JSONL silence → turn complete
     turn_timeout: int = 300           # Max seconds per turn
     startup_timeout: int = 60         # Max seconds to wait for Kiro to start
+    treatment_prefix_map: Dict[str, str] = field(default_factory=lambda: dict(DEFAULT_PREFIX_MAP))
+    # Maps turn role → MCP tool prefix for treatment runs
 ```
 
 ### 2. BenchmarkConfig (extended in `models.py`)
 
-Adds an `automation` field:
+Adds an `automation` field with treatment prefix map support:
 
 ```python
 @dataclass
@@ -145,19 +151,30 @@ Since the benchmark tool runs from the workspace root and the `.kiro` directory 
 
 ### 4. PromptSender (in `automation_driver.py`)
 
-Delivers prompts to Kiro's stdin.
+Delivers prompts to Kiro's stdin. For treatment runs, prefixes each prompt with the appropriate token-miser MCP tool command based on the turn's role.
 
 ```python
+# Default mapping from turn role to MCP tool prefix
+DEFAULT_PREFIX_MAP: Dict[str, str] = {
+    "task_description": "miser-plan",
+    "clarifying_question": "miser-ask",
+    "implementation": "miser-fix",
+    "verification": "miser-ask",
+}
+
 class PromptSender:
-    def __init__(self, kiro_process: subprocess.Popen) -> None: ...
-    def send(self, prompt: str) -> None: ...
+    def __init__(self, kiro_process: subprocess.Popen, prefix_map: Dict[str, str] = None) -> None: ...
+    def send(self, prompt: str, run_type: str = "baseline", role: str = "") -> None: ...
+    def _apply_prefix(self, prompt: str, role: str) -> str: ...
 ```
 
 **Key behaviors:**
-- `send(prompt)` — Writes the prompt text followed by a newline to the Kiro process's stdin, then flushes. The prompt is delivered verbatim from the session script.
+- `send(prompt, run_type, role)` — When `run_type` is `"baseline"`, writes the prompt text verbatim followed by a newline to the Kiro process's stdin, then flushes. When `run_type` is `"treatment"`, calls `_apply_prefix()` to prepend the MCP tool command before writing.
+- `_apply_prefix(prompt, role)` — Looks up the turn `role` in the `prefix_map` (defaults to `DEFAULT_PREFIX_MAP`) and returns `"{prefix} {prompt}"`. If the role is not found in the map, delivers the prompt verbatim and logs a warning.
 - Raises `BrokenPipeError` or `OSError` if the Kiro process has exited.
+- Logs the applied prefix for each treatment turn for traceability.
 
-**Design decision:** Kiro's CLI accepts chat input on stdin when launched in a non-interactive/pipe mode. This is the simplest integration path — no GUI automation, no API server, just subprocess stdin. If Kiro doesn't support this mode, we'd need to fall back to a different mechanism (e.g., xdotool keyboard simulation), but the requirements assume programmatic delivery is possible.
+**Design decision:** The prefix is prepended as a simple space-separated string (e.g., `"miser-plan Fix the pagination bug in utils/pagination.py"`). This mirrors how a human operator would type a token-miser command in Kiro's chat — the tool name keyword at the start of the message triggers Kiro to invoke the corresponding MCP tool. The prefix map is configurable to allow experimentation with different tool assignments per role.
 
 ### 5. ResponseWatcher (in `automation_driver.py`)
 
@@ -195,7 +212,7 @@ class AutomationDriver:
     def start_kiro(self) -> None: ...
     def stop_kiro(self) -> None: ...
     def new_conversation(self) -> None: ...
-    def run_turn(self, prompt: str) -> Tuple[List[dict], bool]: ...
+    def run_turn(self, prompt: str, run_type: str = "baseline", role: str = "") -> Tuple[List[dict], bool]: ...
     def check_health(self) -> bool: ...
 ```
 
@@ -208,7 +225,7 @@ class AutomationDriver:
   Waits up to `startup_timeout` seconds for the process to be alive (polls `process.poll()` to confirm it hasn't exited immediately). Raises `RuntimeError` if the process exits during startup.
 - `stop_kiro()` — Sends SIGTERM, waits 5 seconds, then SIGKILL if needed. Mirrors the pattern in `ProxyManager.stop()`.
 - `new_conversation()` — Stops the current Kiro process and starts a new one. This gives each session a clean conversation context.
-- `run_turn(prompt)` — Sends the prompt via `PromptSender`, then calls `ResponseWatcher.wait_for_response()`. Returns the JSONL entries and a timeout flag.
+- `run_turn(prompt, run_type, role)` — Sends the prompt via `PromptSender.send(prompt, run_type, role)`, then calls `ResponseWatcher.wait_for_response()`. Returns the JSONL entries and a timeout flag. The `run_type` and `role` parameters are forwarded to the PromptSender so it can apply the correct prefix logic.
 - `check_health()` — Returns `True` if the Kiro process is still running (`process.poll() is None`).
 
 **Restart logic:**
@@ -228,7 +245,7 @@ class Orchestrator:
 
 **Changes to `run_single`:**
 - Removes all `input()` calls and rich Panel prompts for user interaction.
-- Calls `automation_driver.run_turn(turn.prompt)` for each turn.
+- Calls `automation_driver.run_turn(turn.prompt, run_type, turn.role)` for each turn, passing the run type (`"baseline"` or `"treatment"`) and the turn's role so the PromptSender can apply the correct prefix logic.
 - Calls `automation_driver.new_conversation()` between sessions.
 - Prints progress lines after each turn and session (Requirement 8).
 - Handles turn timeouts by recording zero credit usage and continuing.
@@ -261,12 +278,21 @@ Used by `AutomationDriver` when:
 ### New: AutomationConfig
 
 ```python
+# Default mapping from turn role to MCP tool prefix for treatment runs
+DEFAULT_PREFIX_MAP: Dict[str, str] = {
+    "task_description": "miser-plan",
+    "clarifying_question": "miser-ask",
+    "implementation": "miser-fix",
+    "verification": "miser-ask",
+}
+
 @dataclass
 class AutomationConfig:
     kiro_path: str = "kiro"
     idle_timeout: int = 30
     turn_timeout: int = 300
     startup_timeout: int = 60
+    treatment_prefix_map: Dict[str, str] = field(default_factory=lambda: dict(DEFAULT_PREFIX_MAP))
 
     def to_dict(self) -> dict:
         return {
@@ -274,6 +300,7 @@ class AutomationConfig:
             "idle_timeout": self.idle_timeout,
             "turn_timeout": self.turn_timeout,
             "startup_timeout": self.startup_timeout,
+            "treatment_prefix_map": dict(self.treatment_prefix_map),
         }
 
     @classmethod
@@ -283,6 +310,7 @@ class AutomationConfig:
             idle_timeout=data.get("idle_timeout", 30),
             turn_timeout=data.get("turn_timeout", 300),
             startup_timeout=data.get("startup_timeout", 60),
+            treatment_prefix_map=data.get("treatment_prefix_map", dict(DEFAULT_PREFIX_MAP)),
         )
 ```
 
@@ -325,6 +353,11 @@ automation:
   idle_timeout: 30
   turn_timeout: 300
   startup_timeout: 60
+  treatment_prefix_map:
+    task_description: "miser-plan"
+    clarifying_question: "miser-ask"
+    implementation: "miser-fix"
+    verification: "miser-ask"
 ```
 
 ### Unchanged Models
@@ -345,11 +378,11 @@ The following existing models remain unchanged:
 
 **Validates: Requirements 2.5, 2.6**
 
-### Property 2: Verbatim prompt delivery
+### Property 2: Verbatim prompt delivery for baseline runs
 
-*For any* prompt string (including unicode, special characters, whitespace, empty lines, and multi-line text), the `PromptSender.send()` method SHALL write the exact string followed by a newline to the Kiro process's stdin without modification.
+*For any* prompt string (including unicode, special characters, whitespace, empty lines, and multi-line text), when `run_type` is `"baseline"`, the `PromptSender.send()` method SHALL write the exact string followed by a newline to the Kiro process's stdin without modification.
 
-**Validates: Requirements 4.1, 4.4**
+**Validates: Requirements 4.4, 10.2**
 
 ### Property 3: Prompt delivery ordering
 
@@ -398,6 +431,18 @@ The following existing models remain unchanged:
 *For any* run where the Kiro process requires restarts, the AutomationDriver SHALL allow at most 2 restarts. On the 3rd restart attempt, the driver SHALL halt with a `BenchmarkError`.
 
 **Validates: Requirements 9.4**
+
+### Property 11: Treatment prompt prefixing
+
+*For any* prompt string and any turn role in the Treatment_Prefix_Map, when `run_type` is `"treatment"`, the PromptSender SHALL produce a string equal to `"{prefix} {prompt}"` where `prefix` is the value from the Treatment_Prefix_Map for that role. When `run_type` is `"baseline"`, the PromptSender SHALL produce the original prompt string unchanged.
+
+**Validates: Requirements 10.1, 10.2**
+
+### Property 12: Treatment prefix map round-trip through config
+
+*For any* valid Treatment_Prefix_Map dictionary (mapping each of the four turn roles to a non-empty prefix string), serializing the AutomationConfig to a dict and parsing it back SHALL produce an equivalent Treatment_Prefix_Map. When the `treatment_prefix_map` key is omitted from the config dict, parsing SHALL produce the default map (`task_description` → `miser-plan`, `clarifying_question` → `miser-ask`, `implementation` → `miser-fix`, `verification` → `miser-ask`).
+
+**Validates: Requirements 10.3, 10.4**
 
 ## Error Handling
 
@@ -471,15 +516,17 @@ The project already uses Hypothesis for property-based testing. Each correctness
 | Property | Test Module | Strategy |
 |---|---|---|
 | P1: PowerManager round-trip | `tests/test_automation_driver.py` | Generate random JSON dicts and random steering file strings. Run backup → disable → enable → restore. Assert file contents match originals. |
-| P2: Verbatim prompt delivery | `tests/test_automation_driver.py` | Generate random strings via `st.text()`. Mock stdin as `io.StringIO`. Call `send()`, assert written content equals input + newline. |
+| P2: Verbatim prompt delivery (baseline) | `tests/test_automation_driver.py` | Generate random strings via `st.text()`. Mock stdin as `io.StringIO`. Call `send(prompt, "baseline", role)`, assert written content equals input + newline. |
 | P3: Prompt ordering | `tests/test_orchestrator.py` | Generate random SessionScripts with 1-5 sessions, 1-4 turns each. Mock AutomationDriver. Assert prompts delivered in session_id → turn_number order. |
 | P4: Sequential prompt-response | `tests/test_orchestrator.py` | Generate random multi-turn sessions. Mock ResponseWatcher with variable delays. Assert each `send()` call happens only after previous `wait_for_response()` returns. |
 | P5: Idle timeout detection | `tests/test_automation_driver.py` | Generate random entry arrival time sequences and idle_timeout values. Simulate time progression. Assert completion declared at correct moment. |
 | P6: Position tracking | `tests/test_automation_driver.py` | Generate random multi-turn entry sequences with varying counts. Assert each turn's entries are disjoint from previous turns. |
 | P7: Session boundary conversations | `tests/test_orchestrator.py` | Generate SessionScripts with 1-10 sessions. Mock AutomationDriver. Assert `new_conversation()` called exactly N-1 times. |
-| P8: Config parsing with defaults | `tests/test_config.py` | Generate partial dicts with random subsets of automation keys. Parse, assert present values used and missing values get defaults. Round-trip serialize/parse. |
+| P8: Config parsing with defaults | `tests/test_config.py` | Generate partial dicts with random subsets of automation keys (including `treatment_prefix_map`). Parse, assert present values used and missing values get defaults. Round-trip serialize/parse. |
 | P9: Restart after 3 consecutive timeouts | `tests/test_automation_driver.py` | Generate random boolean sequences (responsive/unresponsive turns). Assert restart triggered iff 3 consecutive unresponsive. |
 | P10: Max restart limit | `tests/test_automation_driver.py` | Generate scenarios requiring 0-5 restarts. Assert halt after 2nd restart. |
+| P11: Treatment prompt prefixing | `tests/test_automation_driver.py` | Generate random prompt strings and random turn roles. For `run_type="treatment"`, assert output equals `"{prefix} {prompt}"`. For `run_type="baseline"`, assert output equals original prompt. Test with both default and custom prefix maps. |
+| P12: Treatment prefix map config round-trip | `tests/test_config.py` | Generate random prefix map dicts mapping the four roles to random non-empty strings. Serialize to dict, parse back, assert equivalence. Also test with omitted key to verify defaults. |
 
 **Tag format:** Each test is tagged with a comment:
 ```python
@@ -506,6 +553,12 @@ The project already uses Hypothesis for property-based testing. Each correctness
 | `test_partial_report_on_error` | Partial Token_Report written to disk on benchmark halt (Req 9.5) |
 | `test_power_restored_on_error` | PowerManager.restore() called even when benchmark errors (Req 9.6) |
 | `test_restart_logs_session_and_turn` | Restart event log includes session ID and turn number (Req 9.3) |
+| `test_treatment_prompt_gets_prefix` | PromptSender.send() with run_type="treatment" prepends the correct prefix from the map (Req 10.1) |
+| `test_baseline_prompt_no_prefix` | PromptSender.send() with run_type="baseline" delivers prompt verbatim (Req 10.2) |
+| `test_default_prefix_map_values` | Default Treatment_Prefix_Map maps task_description→miser-plan, clarifying_question→miser-ask, implementation→miser-fix, verification→miser-ask (Req 10.3) |
+| `test_custom_prefix_map_override` | Custom treatment_prefix_map from config overrides defaults (Req 10.4) |
+| `test_unknown_role_no_prefix` | PromptSender delivers prompt verbatim and logs warning when role is not in prefix map |
+| `test_treatment_prefix_logged` | PromptSender logs the applied prefix for each treatment turn (Req 10.6) |
 
 ### Integration Tests
 

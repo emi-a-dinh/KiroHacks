@@ -28,6 +28,8 @@ The operator launches a single `benchmark run` command and receives the Comparis
 - **Treatment_Run**: A benchmark run with Kiro and the token-miser Power enabled.
 - **MCP_Config**: The `.kiro/settings/mcp.json` file that controls which MCP servers (Powers) are active in Kiro.
 - **Steering_File**: The `.kiro/steering/token-miser.md` file with `inclusion: auto` that triggers the token-miser Power's behavior when active.
+- **MCP_Tool_Prefix**: A short command keyword (e.g., `miser-fix`, `miser-ask`, `miser-plan`) prepended to a prompt to trigger Kiro to invoke the corresponding token-miser MCP tool during the Treatment_Run.
+- **Treatment_Prefix_Map**: A mapping from Turn role to MCP_Tool_Prefix that determines which prefix to apply for each turn during the Treatment_Run. Default mapping: `task_description` → `miser-plan`, `clarifying_question` → `miser-ask`, `implementation` → `miser-fix`, `verification` → `miser-ask`.
 
 ---
 
@@ -84,7 +86,8 @@ The operator launches a single `benchmark run` command and receives the Comparis
 1. FOR EACH Turn in the Session_Script, THE Prompt_Sender SHALL deliver the Turn's prompt text to the active Kiro conversation.
 2. THE Prompt_Sender SHALL deliver prompts in the order defined by the Session_Script: sessions in session_id order, turns within each session in turn_number order.
 3. THE Prompt_Sender SHALL wait for the Response_Watcher to confirm the previous Turn is complete before delivering the next prompt.
-4. THE Prompt_Sender SHALL deliver the prompt text verbatim from the Session_Script without modification.
+4. WHILE executing the Baseline_Run, THE Prompt_Sender SHALL deliver the prompt text verbatim from the Session_Script without modification.
+5. WHILE executing the Treatment_Run, THE Prompt_Sender SHALL prefix each prompt with the appropriate MCP_Tool_Prefix as defined by the Treatment_Prefix_Map before delivering it to Kiro.
 
 ---
 
@@ -152,3 +155,18 @@ The operator launches a single `benchmark run` command and receives the Comparis
 4. THE Automation_Driver SHALL attempt at most 2 Kiro_Process restarts per run before halting with a descriptive error.
 5. WHEN the benchmark halts due to errors, THE Benchmark_Runner SHALL write any partial Token_Report data collected so far to disk before exiting.
 6. WHEN the benchmark halts due to errors, THE Power_Manager SHALL restore the MCP_Config and Steering_File to their original pre-benchmark state before exiting.
+
+---
+
+### Requirement 10: Treatment Prompt Prefixing
+
+**User Story:** As a benchmark operator, I want treatment run prompts to be prefixed with token-miser MCP tool commands, so that Kiro actually invokes the token-miser context-lens tools during the treatment run and the benchmark measures real MCP tool usage.
+
+#### Acceptance Criteria
+
+1. WHILE executing the Treatment_Run, THE Prompt_Sender SHALL prepend the MCP_Tool_Prefix from the Treatment_Prefix_Map to the prompt text, separated by a space, before delivering it to Kiro.
+2. WHILE executing the Baseline_Run, THE Prompt_Sender SHALL deliver prompts verbatim without any prefix.
+3. THE Treatment_Prefix_Map SHALL map Turn roles to MCP_Tool_Prefix values as follows: `task_description` → `miser-plan`, `clarifying_question` → `miser-ask`, `implementation` → `miser-fix`, `verification` → `miser-ask`.
+4. WHERE a custom Treatment_Prefix_Map is provided in the Config_File, THE Prompt_Sender SHALL use the custom mapping instead of the default.
+5. THE Prompt_Sender SHALL accept the run type (baseline or treatment) and the Turn role as inputs when determining whether and how to prefix a prompt.
+6. FOR EACH Turn in the Treatment_Run, THE Prompt_Sender SHALL log the MCP_Tool_Prefix applied to that Turn's prompt.

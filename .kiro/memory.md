@@ -143,3 +143,15 @@
 **Issues encountered:** Several `__pycache__/`, `.context-lens/`, and `.token-miser/index.db` files were showing as modified in git despite `.gitignore` — they're tracked from earlier commits. Unstaged them manually before committing.
 
 **Open items:** Design doc is next. The `__pycache__` and index DB files still need `git rm --cached` to stop tracking them permanently.
+
+## 2026-05-02 — Automated benchmark testing design doc
+
+**What changed:**
+- `.kiro/specs/automated-benchmark-testing/design.md` — new design doc with architecture diagrams, 8 component interfaces, 10 correctness properties, error handling tables, and testing strategy
+- `.kiro/memory.md` — appended session summary
+
+**Decisions made:** Prompts delivered via Kiro subprocess stdin. Response completion detected by polling JSONL for idle periods (1s interval). Power toggling via mcp.json `disabled` flag + steering file rename. New conversations created by restarting Kiro process. 10 Hypothesis property tests planned covering all 33 acceptance criteria.
+
+**Issues encountered:** None — design phase was straightforward given the clear requirements.
+
+**Open items:** Task list (tasks.md) is next. The `__pycache__` and index DB files are still tracked by git and showing as modified — still need `git rm --cached`.
