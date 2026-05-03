@@ -453,3 +453,18 @@
 **Issues encountered:** None — all configs were already in the right state from the previous treatment run.
 
 **Open items:** User is running the treatment auto-prompter with `--run-type treatment`. After completion, analyze results comparing baseline vs treatment on the error-based "fix the bug" prompts.
+
+## 2026-05-02 — Second benchmark: error-based prompts, same cost result
+
+**What changed:**
+- `.kiro/memory.md` — appended results
+
+**Decisions made:** None — analysis session.
+
+**Issues encountered:** None — both runs completed cleanly.
+
+**Open items:**
+- **Results:** Baseline 4,112 mc (33 calls) vs Treatment 11,092 mc (54 calls). Treatment 2.7x more expensive. Same pattern as first benchmark.
+- Treatment Session 1 alone cost 7,872 mc (40 calls) vs baseline Session 1 at 600 mc (13 calls) — the Power's indexing/querying overhead dominates.
+- Credit cost metric won't favor the Power on Flask-sized projects. For the hackathon writeup, focus on qualitative accuracy (did the Power find the right fix?) rather than token reduction.
+- Could also frame it as: "the Power trades cost for precision — it spends more tokens but on the right files."

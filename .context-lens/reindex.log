@@ -1,0 +1,216 @@
+/bin/sh: python: command not found
+/bin/sh: python: command not found
+/bin/sh: python: command not found
+/bin/sh: python: command not found
+Traceback (most recent call last):
+  File "cli.py", line 77, in <module>
+    main()
+  File "cli.py", line 51, in main
+    from indexer.core import run_index
+  File "context-lens/src/indexer/__init__.py", line 1, in <module>
+    from .scanner import scan_repository
+  File "context-lens/src/indexer/scanner.py", line 66, in <module>
+    def detect_language(file_path: Path) -> str | None:
+TypeError: unsupported operand type(s) for |: 'type' and 'NoneType'
+Traceback (most recent call last):
+  File "cli.py", line 77, in <module>
+    main()
+  File "cli.py", line 51, in main
+    from indexer.core import run_index
+  File "context-lens/src/indexer/__init__.py", line 1, in <module>
+    from .scanner import scan_repository
+  File "context-lens/src/indexer/scanner.py", line 66, in <module>
+    def detect_language(file_path: Path) -> str | None:
+TypeError: unsupported operand type(s) for |: 'type' and 'NoneType'
+Traceback (most recent call last):
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 77, in <module>
+    main()
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 51, in main
+    from indexer.core import run_index
+ModuleNotFoundError: No module named 'indexer.core'
+Traceback (most recent call last):
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 77, in <module>
+    main()
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 51, in main
+    from indexer.core import run_index
+ModuleNotFoundError: No module named 'indexer.core'
+Traceback (most recent call last):
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 77, in <module>
+    main()
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 51, in main
+    from indexer.core import run_index
+ModuleNotFoundError: No module named 'indexer.core'
+Traceback (most recent call last):
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 77, in <module>
+    main()
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 51, in main
+    from indexer.core import run_index
+ModuleNotFoundError: No module named 'indexer.core'
+Traceback (most recent call last):
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 77, in <module>
+    main()
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 51, in main
+    from indexer.core import run_index
+ModuleNotFoundError: No module named 'indexer.core'
+Traceback (most recent call last):
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 77, in <module>
+    main()
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 51, in main
+    from indexer.core import run_index
+ModuleNotFoundError: No module named 'indexer.core'
+Traceback (most recent call last):
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 77, in <module>
+    main()
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 51, in main
+    from indexer.core import run_index
+ModuleNotFoundError: No module named 'indexer.core'
+Traceback (most recent call last):
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 77, in <module>
+    main()
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 51, in main
+    from indexer.core import run_index
+ModuleNotFoundError: No module named 'indexer.core'
+Traceback (most recent call last):
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 77, in <module>
+    main()
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 51, in main
+    from indexer.core import run_index
+ModuleNotFoundError: No module named 'indexer.core'
+Traceback (most recent call last):
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 77, in <module>
+    main()
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 51, in main
+    from indexer.core import run_index
+ModuleNotFoundError: No module named 'indexer.core'
+Traceback (most recent call last):
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 77, in <module>
+    main()
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 51, in main
+    from indexer.core import run_index
+ModuleNotFoundError: No module named 'indexer.core'
+Traceback (most recent call last):
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 77, in <module>
+    main()
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 51, in main
+    from indexer.core import run_index
+ModuleNotFoundError: No module named 'indexer.core'
+Traceback (most recent call last):
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 77, in <module>
+    main()
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 51, in main
+    from indexer.core import run_index
+ModuleNotFoundError: No module named 'indexer.core'
+Traceback (most recent call last):
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 77, in <module>
+    main()
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 51, in main
+    from indexer.core import run_index
+ModuleNotFoundError: No module named 'indexer.core'
+Traceback (most recent call last):
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 77, in <module>
+    main()
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 51, in main
+    from indexer.core import run_index
+ModuleNotFoundError: No module named 'indexer.core'
+Traceback (most recent call last):
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 77, in <module>
+    main()
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 51, in main
+    from indexer.core import run_index
+ModuleNotFoundError: No module named 'indexer.core'
+Traceback (most recent call last):
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 77, in <module>
+    main()
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 51, in main
+    from indexer.core import run_index
+ModuleNotFoundError: No module named 'indexer.core'
+Traceback (most recent call last):
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 77, in <module>
+    main()
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 51, in main
+    from indexer.core import run_index
+ModuleNotFoundError: No module named 'indexer.core'
+Traceback (most recent call last):
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 77, in <module>
+    main()
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 51, in main
+    from indexer.core import run_index
+ModuleNotFoundError: No module named 'indexer.core'
+Traceback (most recent call last):
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 77, in <module>
+    main()
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 51, in main
+    from indexer.core import run_index
+ModuleNotFoundError: No module named 'indexer.core'
+Traceback (most recent call last):
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 77, in <module>
+    main()
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 51, in main
+    from indexer.core import run_index
+ModuleNotFoundError: No module named 'indexer.core'
+Traceback (most recent call last):
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 77, in <module>
+    main()
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 51, in main
+    from indexer.core import run_index
+ModuleNotFoundError: No module named 'indexer.core'
+Traceback (most recent call last):
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 77, in <module>
+    main()
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 51, in main
+    from indexer.core import run_index
+ModuleNotFoundError: No module named 'indexer.core'
+Traceback (most recent call last):
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 77, in <module>
+    main()
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 51, in main
+    from indexer.core import run_index
+ModuleNotFoundError: No module named 'indexer.core'
+Traceback (most recent call last):
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 77, in <module>
+    main()
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 51, in main
+    from indexer.core import run_index
+ModuleNotFoundError: No module named 'indexer.core'
+Traceback (most recent call last):
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 77, in <module>
+    main()
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 51, in main
+    from indexer.core import run_index
+ModuleNotFoundError: No module named 'indexer.core'
+Traceback (most recent call last):
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 77, in <module>
+    main()
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 51, in main
+    from indexer.core import run_index
+ModuleNotFoundError: No module named 'indexer.core'
+Traceback (most recent call last):
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 77, in <module>
+    main()
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 51, in main
+    from indexer.core import run_index
+ModuleNotFoundError: No module named 'indexer.core'
+Traceback (most recent call last):
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 77, in <module>
+    main()
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 51, in main
+    from indexer.core import run_index
+ModuleNotFoundError: No module named 'indexer.core'
+Traceback (most recent call last):
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 77, in <module>
+    main()
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 51, in main
+    from indexer.core import run_index
+ModuleNotFoundError: No module named 'indexer.core'
+Traceback (most recent call last):
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 77, in <module>
+    main()
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 51, in main
+    from indexer.core import run_index
+ModuleNotFoundError: No module named 'indexer.core'
+Traceback (most recent call last):
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 77, in <module>
+    main()
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 51, in main
+    from indexer.core import run_index
+ModuleNotFoundError: No module named 'indexer.core'
