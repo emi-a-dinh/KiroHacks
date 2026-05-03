@@ -58,6 +58,14 @@ def cmd_fix(args):
     run_fix = _lazy_import("query.smart", "run_fix")
     print(run_fix(args.task, repo_path=_find_repo(), error_log=args.error, k=args.k))
 
+def cmd_context(args):
+    run_context = _lazy_import("query.smart", "run_context")
+    print(run_context(args.task, repo_path=_find_repo(), error_log=args.error, k=args.k))
+
+def cmd_read(args):
+    run_read = _lazy_import("query.smart", "run_read")
+    print(run_read(args.symbol_name, repo_path=_find_repo()))
+
 def cmd_ask(args):
     run_ask = _lazy_import("query.smart", "run_ask")
     print(run_ask(args.question, repo_path=_find_repo(), error_log=args.error))
@@ -99,6 +107,8 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 examples:
+  miser context "fix the auth bypass on GET task"
+  miser read login_user
   miser fix "fix the auth bypass on GET task"
   miser ask "how does the login flow work?"
   miser plan "add sorting to the task list"
@@ -109,6 +119,14 @@ No manual indexing, unit IDs, or expansion needed. Just describe the task.
 """,
     )
     sub = parser.add_subparsers(dest="command")
+
+    p = sub.add_parser("context", help="Select relevant units and show signatures only")
+    p.add_argument("task"); p.add_argument("--error", "-e"); p.add_argument("--k", "-k", type=int, default=5)
+    p.set_defaults(func=cmd_context)
+
+    p = sub.add_parser("read", help="Read the full source for one symbol")
+    p.add_argument("symbol_name")
+    p.set_defaults(func=cmd_read)
 
     p = sub.add_parser("fix", help="Select code and get fix instructions")
     p.add_argument("task"); p.add_argument("--error", "-e"); p.add_argument("--k", "-k", type=int, default=12)

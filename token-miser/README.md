@@ -20,6 +20,27 @@ No manual indexing, unit IDs, or expansion needed. Just describe the task.
 pip install -e token-miser/
 ```
 
+## Codex MCP setup
+
+Codex reads MCP server definitions from `~/.codex/config.toml`. Add this block:
+
+```toml
+[mcp_servers.token_miser]
+command = "/Library/Frameworks/Python.framework/Versions/3.13/bin/python3"
+args = ["/Users/edinhdawg/Documents/KiroHacks/token-miser/src/mcp_server.py"]
+startup_timeout_sec = 20.0
+```
+
+The server exposes these tools:
+
+- `miser_fix`
+- `miser_ask`
+- `miser_plan`
+- `miser_context`
+- `miser_read`
+
+After updating the config, restart Codex so it reloads MCP servers.
+
 ## How it works
 
 1. Indexes your codebase into a local SQLite database

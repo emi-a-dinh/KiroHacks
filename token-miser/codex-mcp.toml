@@ -1,0 +1,4 @@
+[mcp_servers.token_miser]
+command = "/Library/Frameworks/Python.framework/Versions/3.13/bin/python3"
+args = ["/Users/edinhdawg/Documents/KiroHacks/token-miser/src/mcp_server.py"]
+startup_timeout_sec = 20.0

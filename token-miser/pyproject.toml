@@ -10,13 +10,14 @@ readme = "README.md"
 requires-python = ">=3.9"
 license = "MIT"
 keywords = ["llm", "context", "indexing", "code", "mcp", "tokens"]
-dependencies = []
+dependencies = ["mcp>=1.0.0"]
 
 [project.optional-dependencies]
 treesitter = ["tree-sitter-languages>=1.10.0"]
 
 [project.scripts]
 miser = "src.cli:main"
+miser-mcp = "src.mcp_server:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src"]

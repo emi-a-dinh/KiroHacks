@@ -1,8 +1,9 @@
 """
-Smart commands — context and read.
+Smart commands for Token Miser.
 
-miser_context  → signatures only, ~300–800 tokens
-miser_read     → full source of one unit on demand
+- `miser_context` returns signatures only, ~300–800 tokens
+- `miser_read` returns the full source of one indexed unit
+- `miser_fix` / `miser_ask` / `miser_plan` are task-oriented aliases
 """
 
 from pathlib import Path
@@ -57,7 +58,7 @@ def _build_context_output(result, db: "Database") -> str:
     Build signature-only context output, one line per unit.
 
     Format:
-        path/to/file.py::signature  → callee1, callee2
+        path/to/file.py::symbol_name::signature  → callee1, callee2
     """
     units = [su.unit for su in result.units]
     all_ids = [u.unit_id for u in units if u.unit_id]
@@ -69,7 +70,7 @@ def _build_context_output(result, db: "Database") -> str:
         u = su.unit
         uid = u.unit_id
         callee_str = _format_callees(uid, calls, id_to_unit) if uid else ""
-        lines.append(f"{u.file_path}::{u.signature}{callee_str}")
+        lines.append(f"{u.file_path}::{u.symbol_name}::{u.signature}{callee_str}")
 
     return "\n".join(lines)
 
@@ -153,3 +154,18 @@ def run_read(symbol_name: str, repo_path: str = ".") -> str:
     unit = exact[0]
     header = f"{unit.file_path}:{unit.start_line}–{unit.end_line}  {unit.signature}"
     return f"{header}\n\n{unit.full_code.rstrip()}"
+
+
+def run_fix(task: str, repo_path: str = ".", error_log: Optional[str] = None, k: int = 12) -> str:
+    """Return focused context for an implementation or bug-fix task."""
+    return run_context(task, repo_path=repo_path, error_log=error_log, k=k)
+
+
+def run_ask(question: str, repo_path: str = ".", error_log: Optional[str] = None, k: int = 8) -> str:
+    """Return focused context for a codebase question."""
+    return run_context(question, repo_path=repo_path, error_log=error_log, k=k)
+
+
+def run_plan(task: str, repo_path: str = ".", error_log: Optional[str] = None, k: int = 10) -> str:
+    """Return focused context for multi-step planning work."""
+    return run_context(task, repo_path=repo_path, error_log=error_log, k=k)

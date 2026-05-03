@@ -1,2 +1,3 @@
 # Core dependencies (all optional - graceful fallback if not available)
+mcp>=1.0.0
 tree-sitter-languages>=1.10.0
