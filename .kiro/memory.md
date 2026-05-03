@@ -505,3 +505,14 @@
 **Issues encountered:** None.
 
 **Open items:** None from this session. The parser extracts `credit_usage` and `contextUsagePercentage` from AWS `generateAssistantResponse` binary event stream responses intercepted by mitmproxy.
+
+## 2026-05-02 — Model selection for benchmarking
+
+**What changed:**
+- `.kiro/memory.md` — appended session summary
+
+**Decisions made:** Can't control the model from the benchmark side — Kiro's model is set by the AWS backend via `generateAssistantResponse`. Would need a model selector in Kiro's UI to switch between models (e.g., Sonnet vs Opus).
+
+**Issues encountered:** None — discussion only.
+
+**Open items:** Check if Kiro has a model selector in its settings. A smaller model with the Power's focused context might outperform a larger model with full-file dumps — that would be a compelling benchmark angle. The Power's value is stronger with smaller context windows.

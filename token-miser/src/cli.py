@@ -55,16 +55,16 @@ def _dim(t):
 
 
 def cmd_fix(args):
-    run_fix = _lazy_import("query.smart", "run_fix")
-    print(run_fix(args.task, repo_path=_find_repo(), error_log=args.error, k=args.k))
+    run_context = _lazy_import("query.smart", "run_context")
+    print(run_context(args.task, repo_path=_find_repo(), error_log=args.error, k=args.k))
 
 def cmd_ask(args):
-    run_ask = _lazy_import("query.smart", "run_ask")
-    print(run_ask(args.question, repo_path=_find_repo(), error_log=args.error))
+    run_context = _lazy_import("query.smart", "run_context")
+    print(run_context(args.question, repo_path=_find_repo(), error_log=args.error))
 
 def cmd_plan(args):
-    run_plan = _lazy_import("query.smart", "run_plan")
-    print(run_plan(args.task, repo_path=_find_repo(), error_log=args.error))
+    run_context = _lazy_import("query.smart", "run_context")
+    print(run_context(args.task, repo_path=_find_repo(), error_log=args.error))
 
 def cmd_index(args):
     run_index = _lazy_import("indexer.core", "run_index")
