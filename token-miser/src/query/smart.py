@@ -54,41 +54,31 @@ def _format_callees(uid: int, calls: Dict[int, List[int]], id_to_unit: Dict[int,
 
 def _build_context_output(result, db: "Database") -> str:
     """
-    Build signature-only context output grouped by file.
+    Build signature-only context output, one line per unit.
 
     Format:
-        path/to/file.py
-          42  def function_name(args)  → callee1, callee2
+        path/to/file.py::signature  → callee1, callee2
     """
-    from collections import defaultdict
-
     units = [su.unit for su in result.units]
     all_ids = [u.unit_id for u in units if u.unit_id]
     id_to_unit = {u.unit_id: u for u in units if u.unit_id}
     calls, _ = db.get_edges_for_units(all_ids)
 
-    by_file: Dict[str, list] = defaultdict(list)
-    for su in result.units:
-        by_file[su.unit.file_path].append(su)
-
     lines = []
-    for file_path in sorted(by_file.keys()):
-        lines.append(file_path)
-        for su in sorted(by_file[file_path], key=lambda s: s.unit.start_line):
-            u = su.unit
-            uid = u.unit_id
-            callee_str = _format_callees(uid, calls, id_to_unit) if uid else ""
-            lines.append(f"  {u.start_line}  {u.signature}{callee_str}")
-        lines.append("")
+    for su in sorted(result.units, key=lambda s: (s.unit.file_path, s.unit.start_line)):
+        u = su.unit
+        uid = u.unit_id
+        callee_str = _format_callees(uid, calls, id_to_unit) if uid else ""
+        lines.append(f"{u.file_path}::{u.signature}{callee_str}")
 
-    return "\n".join(lines).rstrip()
+    return "\n".join(lines)
 
 
 def run_context(
     task: str,
     repo_path: str = ".",
     error_log: Optional[str] = None,
-    k: int = 12,
+    k: int = 5,
 ) -> str:
     """Return signatures of relevant units only. ~300–800 tokens."""
     import sys
