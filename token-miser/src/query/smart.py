@@ -63,9 +63,8 @@ def _format_edge_comment(
 def _build_context_block(
     selected_units,  # List[SelectedUnit]
     db: "Database",
-    show_reasons: bool = True,
 ) -> str:
-    """Build the expanded code block for selected units with reasons."""
+    """Build the expanded code block for selected units."""
     units = [su.unit for su in selected_units]
     all_ids = [u.unit_id for u in units if u.unit_id]
     id_to_unit = {u.unit_id: u for u in units if u.unit_id}
@@ -82,10 +81,6 @@ def _build_context_block(
         header += f" (lines {unit.start_line}–{unit.end_line})"
         lines.append(header)
 
-        # Selection reasons
-        if show_reasons and su.reasons:
-            lines.append(f"# Selected because: {'; '.join(su.reasons)}")
-
         if uid:
             lines.append(_format_edge_comment("Called by", called_by.get(uid, []), id_to_unit))
             lines.append(_format_edge_comment("Calls", calls.get(uid, []), id_to_unit))
@@ -93,17 +88,6 @@ def _build_context_block(
         lines.append(unit.full_code.rstrip())
         lines.append("")
 
-    return "\n".join(lines)
-
-
-def _build_coverage_block(result) -> str:
-    """Build a coverage summary from SelectionResult."""
-    lines = []
-    lines.append("## Selection Coverage")
-    for key, found in result.coverage.items():
-        label = key.replace("_", " ")
-        status = "yes" if found else "no"
-        lines.append(f"  {label}: {status}")
     return "\n".join(lines)
 
 
@@ -143,11 +127,9 @@ def run_fix(
                 "## Selection\n"
                 "No relevant code units found. The index may be empty or the task "
                 "description doesn't match any symbols in the codebase.\n"
-                "Selection confidence: low\n"
             )
 
         context_block = _build_context_block(result.units, db)
-        coverage_block = _build_coverage_block(result)
 
     lines = []
     lines.append("## Task")
@@ -163,12 +145,9 @@ def run_fix(
         lines.extend(error_lines)
         lines.append("")
 
-    lines.append(f"## Selected Code ({len(result.units)} units, confidence: {result.confidence_label})")
+    lines.append(f"## Selected Code ({len(result.units)} units)")
     lines.append("")
     lines.append(context_block)
-
-    lines.append(coverage_block)
-    lines.append("")
 
     lines.append("## Instructions")
     lines.append("1. Implement the fix using only the Selected Code above.")
@@ -176,10 +155,6 @@ def run_fix(
     lines.append("3. If the Selected Code is insufficient, stop and say exactly what context is missing instead of reading files.")
     lines.append("4. Apply edits directly to the file paths shown in the Selected Code.")
     lines.append("5. Run tests if a test runner is available, then summarize what changed.")
-    lines.append("")
-    lines.append(f"Selection confidence: {result.confidence_label}")
-    if result.confidence_label == "low":
-        lines.append("Selection confidence is low. Ask the user before using workspace search or reading files.")
 
     return "\n".join(lines)
 
@@ -211,7 +186,6 @@ def run_ask(
             return f"## Question\n{question}\n\n## Selection\nNo relevant code units found.\n"
 
         context_block = _build_context_block(result.units, db)
-        coverage_block = _build_coverage_block(result)
 
     lines = []
     lines.append("## Question")
@@ -223,12 +197,9 @@ def run_ask(
         lines.extend(error_log.strip().splitlines()[:40])
         lines.append("")
 
-    lines.append(f"## Relevant Code ({len(result.units)} units, confidence: {result.confidence_label})")
+    lines.append(f"## Relevant Code ({len(result.units)} units)")
     lines.append("")
     lines.append(context_block)
-
-    lines.append(coverage_block)
-    lines.append("")
 
     lines.append("## Instructions")
     lines.append("Answer the question using only the code above as context.")
@@ -264,7 +235,6 @@ def run_plan(
             return f"## Task\n{task}\n\n## Selection\nNo relevant code units found.\n"
 
         context_block = _build_context_block(result.units, db)
-        coverage_block = _build_coverage_block(result)
 
     lines = []
     lines.append("## Task")
@@ -276,12 +246,9 @@ def run_plan(
         lines.extend(error_log.strip().splitlines()[:40])
         lines.append("")
 
-    lines.append(f"## Relevant Code ({len(result.units)} units, confidence: {result.confidence_label})")
+    lines.append(f"## Relevant Code ({len(result.units)} units)")
     lines.append("")
     lines.append(context_block)
-
-    lines.append(coverage_block)
-    lines.append("")
 
     lines.append("## Instructions")
     lines.append("Create a step-by-step implementation plan for this task.")

@@ -80,3 +80,13 @@
 **Issues encountered:** Other projects couldn't connect to the token-miser MCP server (timeout error -32001). Root cause: `mcp.json` pointed to macOS system Python 3.9 which lacked `tree_sitter_languages` and potentially had compatibility issues. Verified fix by testing the full MCP initialize handshake.
 
 **Open items:** The other project's `mcp.json` also needs to be updated with the corrected Python path if it has its own copy.
+
+## 2026-05-02 — Token Miser user flow review
+
+**What changed:** No files modified — read-only session.
+
+**Decisions made:** N/A.
+
+**Issues encountered:** None.
+
+**Open items:** User flow is well-understood. Potential area to revisit: the confidence scoring in `selector.py` uses a fixed additive model — could be worth tuning thresholds or weighting signals differently based on real-world usage patterns.

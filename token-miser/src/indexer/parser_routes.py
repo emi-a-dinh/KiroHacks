@@ -12,6 +12,11 @@ ROUTE_CALL_RE = re.compile(
     re.IGNORECASE,
 )
 
+TEST_CALL_RE = re.compile(
+    r"\b(?P<kind>test|it)\s*\(",
+    re.IGNORECASE,
+)
+
 
 def _line_number(source: str, offset: int) -> int:
     return source[:offset].count("\n") + 1
@@ -20,6 +25,11 @@ def _line_number(source: str, offset: int) -> int:
 def _sanitize_route(route_path: str) -> str:
     parts = re.findall(r"[A-Za-z0-9]+", route_path.replace(":", " "))
     return "_".join(part.lower() for part in parts) or "root"
+
+
+def _sanitize_symbol(text: str) -> str:
+    parts = re.findall(r"[A-Za-z0-9]+", text)
+    return "_".join(part.lower() for part in parts) or "case"
 
 
 def _read_first_string(source: str, start: int) -> Optional[str]:
@@ -140,6 +150,46 @@ def parse_route_handlers(file_path: str, source: str, language: str) -> List[Cod
             unit_type="route",
             parent_class=router,
             signature=signature,
+            start_line=start_line,
+            end_line=end_line,
+            full_code=full_code,
+        ))
+
+    return units
+
+
+def parse_test_calls(file_path: str, source: str, language: str) -> List[CodeUnit]:
+    """Extract common test/it blocks from JavaScript and TypeScript test files."""
+    if language not in ("javascript", "typescript") or "test" not in file_path.lower():
+        return []
+
+    units: List[CodeUnit] = []
+
+    for match in TEST_CALL_RE.finditer(source):
+        open_paren = source.find("(", match.start())
+        if open_paren == -1:
+            continue
+
+        test_name = _read_first_string(source, open_paren + 1)
+        if test_name is None:
+            continue
+
+        end_offset = _find_call_end(source, open_paren)
+        if end_offset <= open_paren:
+            continue
+
+        start_line = _line_number(source, match.start())
+        end_line = _line_number(source, end_offset)
+        symbol_name = f"{match.group('kind').lower()}_{_sanitize_symbol(test_name)}"
+        full_code = source[match.start():end_offset].rstrip()
+
+        units.append(CodeUnit(
+            unit_id=None,
+            file_path=file_path,
+            symbol_name=symbol_name,
+            unit_type="test",
+            parent_class=None,
+            signature=f"{match.group('kind').lower()} {test_name}",
             start_line=start_line,
             end_line=end_line,
             full_code=full_code,

@@ -9,11 +9,11 @@ from .scanner import scan_repository, detect_moves
 from .parser_python import parse_python_file
 from .parser_treesitter import parse_with_treesitter, TREE_SITTER_AVAILABLE
 from .parser_regex import parse_with_regex
-from .parser_routes import parse_route_handlers
+from .parser_routes import parse_route_handlers, parse_test_calls
 from .edge_builder import build_edges
 
 
-PARSER_VERSION = "3-route-handler-units"
+PARSER_VERSION = "4-route-and-test-units"
 
 
 def _with_supplemental_units(
@@ -24,6 +24,7 @@ def _with_supplemental_units(
 ) -> List[CodeUnit]:
     """Add domain-specific units that general parsers usually miss."""
     supplemental = parse_route_handlers(file_path, source, language)
+    supplemental.extend(parse_test_calls(file_path, source, language))
     if not supplemental:
         return units
 

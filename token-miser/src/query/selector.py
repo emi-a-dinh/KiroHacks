@@ -1,21 +1,7 @@
-"""
-Automatic unit selection — the brain of lens fix/ask/plan.
-
-Given a task description (and optional error log), scores every unit in the index
-and returns the most relevant ones with reasons and coverage tracking.
-
-Improvements over v1:
-  1. Fixed camelCase splitting (tokenize before lowercasing)
-  2. Domain alias expansion (auth, route, ownership keywords)
-  3. Stricter sibling selection (score > 0 or shared name tokens)
-  4. Smarter test discovery (name matching, route strings, domain words)
-  5. Coverage-based confidence (not just top score)
-  6. Explainable selection (reasons per unit, coverage dict)
-"""
+"""Automatic unit selection for fix/ask/plan commands."""
 
 import re
 from dataclasses import dataclass, field
-from collections import defaultdict
 from typing import Dict, List, Optional, Set, Tuple, TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -42,34 +28,56 @@ STOP_WORDS = {
 }
 
 
-# ── Domain aliases (improvement #2) ───────────────────────────────────────────
+# ── Intent terms and aliases ──────────────────────────────────────────────────
+
+WRITE_TERMS = {"write", "writes", "writing", "post", "put", "patch", "delete", "create", "update", "insert", "save"}
+READ_TERMS = {"read", "get", "list", "search", "fetch", "find", "query"}
+AUTH_TERMS = {"auth", "authentication", "authorization", "token", "jwt", "session", "user", "owner", "permission", "401", "403"}
+BACKEND_TERMS = {"backend", "server", "api", "route", "routes", "endpoint", "handler", "middleware", "controller", "service"}
+FRONTEND_TERMS = {"frontend", "front", "ui", "ux", "component", "components", "page", "pages", "hook", "hooks", "form", "button"}
+TEST_TERMS = {"test", "tests", "spec", "assert", "expect", "coverage"}
+
+WRITE_METHODS = {"post", "put", "patch", "delete"}
+READ_METHODS = {"get"}
+
+GENERIC_PATH_TOKENS = {
+    "src", "app", "apps", "api", "web", "lib", "utils", "shared",
+    "routes", "route", "services", "service", "middleware", "types",
+    "hooks", "pages", "components", "repositories", "repository",
+}
+
+ROUTE_CALL_RE = re.compile(
+    r"\b(?:router|app|[A-Za-z_][A-Za-z0-9_]*Router)\s*\.\s*"
+    r"(get|post|put|patch|delete)\s*\(",
+    re.IGNORECASE,
+)
+
 
 ALIASES = {
-    "read":           {"get", "fetch", "retrieve", "query", "list"},
-    "write":          {"post", "create", "insert", "add", "save"},
-    "writes":         {"write", "post", "create", "insert", "add", "save"},
-    "writing":        {"write", "post", "create", "insert", "add", "save"},
+    "write":          {"post", "put", "patch", "delete", "create", "update"},
+    "writes":         {"write", "post", "put", "patch", "delete", "create", "update"},
+    "writing":        {"write", "post", "put", "patch", "delete", "create", "update"},
+    "create":         {"post", "insert", "add", "save"},
     "update":         {"put", "patch", "modify", "edit", "change"},
-    "updated":        {"update", "put", "patch", "modify", "edit", "change"},
-    "remove":         {"delete", "destroy", "drop"},
-    "own":            {"owner", "ownership", "user_id", "belongs"},
-    "owns":           {"owner", "ownership", "user_id", "belongs"},
-    "attribution":    {"attribute", "createdby", "created", "creator", "owner", "user"},
-    "attribute":      {"attribution", "createdby", "created", "creator", "owner", "user"},
+    "remove":         {"delete", "destroy"},
+    "read":           {"get", "list", "search", "fetch", "query"},
+    "list":           {"get", "read", "fetch"},
+    "search":         {"get", "read", "query", "filter"},
+    "auth":           {"authentication", "authorization", "token", "jwt", "session", "user", "owner", "permission", "401", "403"},
+    "authentication": {"auth", "token", "jwt", "session", "user"},
+    "authorization":  {"auth", "owner", "permission", "401", "403"},
+    "authenticated":  {"auth", "session", "user"},
+    "middleware":     {"requireauth", "auth"},
+    "endpoint":       {"route", "handler", "api"},
+    "route":          {"endpoint", "handler", "api", "router"},
+    "attribution":    {"createdby", "created", "creator", "owner", "user"},
+    "attribute":      {"createdby", "created", "creator", "owner", "user"},
     "created":        {"create", "createdby", "creator", "owner", "user"},
     "createdby":      {"created", "creator", "owner", "user"},
-    "authorization":  {"auth", "permission", "forbidden", "403", "authorize"},
-    "authenticated":  {"auth", "session", "login", "logged"},
-    "authentication": {"auth", "session", "login", "register", "password"},
-    "auth":           {"authentication", "authorization", "session", "login", "permission"},
-    "endpoint":       {"route", "handler", "view", "api"},
-    "route":          {"endpoint", "handler", "view", "api"},
     "bug":            {"fix", "issue", "broken", "error", "wrong"},
     "fix":            {"bug", "repair", "patch", "resolve"},
     "pagination":     {"paginate", "page", "offset", "limit", "page_size"},
-    "search":         {"filter", "query", "find", "lookup"},
     "test":           {"spec", "assert", "expect", "verify", "check"},
-    "user":           {"account", "profile", "member"},
     "task":           {"todo", "item", "ticket", "issue"},
 }
 
@@ -86,7 +94,7 @@ class SelectedUnit:
 
 @dataclass
 class SelectionResult:
-    """Full selection result with explainability."""
+    """Full selection result."""
     units: List[SelectedUnit] = field(default_factory=list)
     confidence: float = 0.0
     confidence_label: str = "low"
@@ -136,7 +144,7 @@ def _tokenize(text: str) -> Set[str]:
 
 
 def _expand_aliases(tokens: Set[str]) -> Set[str]:
-    """Expand tokens with domain aliases (improvement #2)."""
+    """Expand tokens with domain aliases."""
     expanded = set(tokens)
     for token in tokens:
         if token in ALIASES:
@@ -144,16 +152,80 @@ def _expand_aliases(tokens: Set[str]) -> Set[str]:
     return expanded
 
 
+def _detect_intent(task_tokens: Set[str], expanded_tokens: Set[str]) -> Dict[str, bool]:
+    """Classify the task using simple internal keyword rules."""
+    tokens = task_tokens | expanded_tokens
+    write = bool(tokens & WRITE_TERMS)
+    read = bool(tokens & READ_TERMS)
+    auth = bool(tokens & AUTH_TERMS)
+    frontend = bool(tokens & FRONTEND_TERMS)
+    api = bool(tokens & BACKEND_TERMS) or (auth and write)
+    backend = bool(tokens & BACKEND_TERMS) or api
+
+    return {
+        "write": write,
+        "read": read and not write,
+        "auth": auth,
+        "backend": backend,
+        "frontend": frontend,
+        "api": api,
+        "tests": bool(tokens & TEST_TERMS),
+    }
+
+
 def _is_route_unit(unit: "CodeUnit") -> bool:
     """Return true for route handler units and route-like file paths."""
     return unit.unit_type == "route" or "/routes/" in f"/{unit.file_path.lower()}"
 
 
-def _task_wants_write_endpoint(task_tokens: Set[str], expanded_tokens: Set[str]) -> bool:
+def _task_wants_write_endpoint(intent: Dict[str, bool]) -> bool:
     """Detect tasks that need write endpoint context."""
-    write_terms = {"write", "writes", "writing", "post", "put", "patch", "delete", "create", "update", "insert", "save"}
-    endpoint_terms = {"route", "endpoint", "handler", "api", "middleware", "auth", "authentication", "authorization"}
-    return bool((task_tokens | expanded_tokens) & write_terms) and bool((task_tokens | expanded_tokens) & endpoint_terms)
+    return intent["write"] and (intent["backend"] or intent["api"] or intent["auth"])
+
+
+def _path_tokens(file_path: str) -> Set[str]:
+    return set(re.findall(r'[a-zA-Z_][a-zA-Z0-9_]*', file_path.lower()))
+
+
+def _is_frontend_file(file_path: str) -> bool:
+    path = f"/{file_path.lower()}"
+    return (
+        "/apps/web/" in path
+        or "/web/" in path
+        or "/pages/" in path
+        or "/hooks/" in path
+        or "/components/" in path
+        or file_path.endswith(".tsx")
+        or file_path.endswith(".jsx")
+    )
+
+
+def _is_backend_file(file_path: str) -> bool:
+    path = f"/{file_path.lower()}"
+    return (
+        "/apps/api/" in path
+        or "/api/" in path
+        or "/server/" in path
+        or "/routes/" in path
+        or "/controllers/" in path
+        or "/middleware/" in path
+        or "/services/" in path
+        or "/repositories/" in path
+    )
+
+
+def _is_request_user_typing(unit: "CodeUnit") -> bool:
+    text = f"{unit.file_path}\n{unit.signature}\n{unit.full_code}".lower()
+    return (
+        "express.d.ts" in unit.file_path.lower()
+        or ("namespace express" in text and "user" in text)
+        or ("interface request" in text and "user" in text)
+    )
+
+
+def _contains_any(text: str, needles: Set[str]) -> bool:
+    lower = text.lower()
+    return any(needle in lower for needle in needles)
 
 
 def _route_method(unit: "CodeUnit") -> str:
@@ -176,6 +248,69 @@ def _is_public_auth_route(unit: "CodeUnit") -> bool:
     """Detect login/register auth routes that normally should not require auth."""
     text = f"{unit.file_path} {unit.symbol_name} {unit.signature}".lower()
     return "/routes/auth" in f"/{unit.file_path.lower()}" or "login" in text or "register" in text
+
+
+def _framework_score(unit: "CodeUnit", intent: Dict[str, bool]) -> float:
+    """Score framework-specific route/auth patterns."""
+    text = f"{unit.signature}\n{unit.full_code}"
+    lower = text.lower()
+    score = 0.0
+
+    route_methods = {method.lower() for method in ROUTE_CALL_RE.findall(text)}
+    method = _route_method(unit)
+    if method:
+        route_methods.add(method)
+
+    if intent["write"] and route_methods & WRITE_METHODS:
+        score += 24
+    elif intent["read"] and route_methods & READ_METHODS:
+        score += 14
+    elif route_methods and (intent["api"] or intent["backend"]) and not intent["write"]:
+        score += 8
+
+    if intent["auth"]:
+        if "requireauth" in lower:
+            score += 14
+        if "req.user" in lower:
+            score += 14
+        if _contains_any(lower, {"verifytoken", "jwt", "bearer", "401", "403"}):
+            score += 6
+        if _is_request_user_typing(unit):
+            score += 20
+
+    if intent["write"] and _contains_any(lower, {"createdby", "created_by", "ownerid", "owner_id"}):
+        score += 10
+
+    return score
+
+
+def _shares_task_tokens(unit: "CodeUnit", expanded_tokens: Set[str]) -> bool:
+    tokens = _tokenize(f"{unit.symbol_name} {unit.signature}")
+    meaningful = expanded_tokens - GENERIC_PATH_TOKENS - {"post", "get", "put", "patch", "delete"}
+    return bool(tokens & meaningful)
+
+
+def _is_similar_route_handler(unit: "CodeUnit", top_units: List["CodeUnit"], intent: Dict[str, bool]) -> bool:
+    if not _is_route_unit(unit):
+        return False
+
+    method = _route_method(unit)
+    if intent["write"] and method not in WRITE_METHODS:
+        return False
+    if intent["read"] and method not in READ_METHODS:
+        return False
+
+    for top in top_units:
+        if not _is_route_unit(top):
+            continue
+        if top.file_path != unit.file_path:
+            continue
+        top_method = _route_method(top)
+        if intent["write"] and top_method in WRITE_METHODS and method in WRITE_METHODS:
+            return True
+        if intent["read"] and top_method in READ_METHODS and method in READ_METHODS:
+            return True
+    return False
 
 
 # ── Shared name token check (improvement #3) ──────────────────────────────────
@@ -203,10 +338,16 @@ def _find_test_file_for(source_path: str) -> Set[str]:
     return {
         f"test_{basename}",
         f"{basename}_test",
+        f"{basename}.test",
+        f"{basename}.spec",
         f"test_{basename}.py",
         f"{basename}_test.py",
         f"test_{basename}.js",
+        f"{basename}_test.js",
         f"test_{basename}.ts",
+        f"{basename}_test.ts",
+        f"{basename}.test.ts",
+        f"{basename}.spec.ts",
     }
 
 
@@ -218,6 +359,7 @@ def _score_unit(
     expanded_tokens: Set[str],
     error_tokens: Set[str],
     file_path_hits: Set[str],
+    intent: Dict[str, bool],
 ) -> Tuple[float, List[str]]:
     """
     Score a unit and return (score, reasons).
@@ -242,11 +384,12 @@ def _score_unit(
         score += 7
         reasons.append(f"name matches alias: {', '.join(name_alias_match)}")
 
-    # File path match
-    path_parts = set(re.findall(r'[a-zA-Z_][a-zA-Z0-9_]*', unit.file_path.lower()))
+    # File path match. Ignore generic folder names so "middleware" does not
+    # make every middleware file look relevant.
+    path_parts = _path_tokens(unit.file_path) - GENERIC_PATH_TOKENS
     path_task_match = path_parts & expanded_tokens
     if path_task_match:
-        score += 8
+        score += 6
         reasons.append(f"file path matches: {', '.join(path_task_match)}")
 
     path_error_match = path_parts & error_tokens
@@ -276,23 +419,24 @@ def _score_unit(
     code_tokens = _tokenize(unit.full_code)
     code_overlap = code_tokens & expanded_tokens
     if code_overlap:
-        pts = min(3, len(code_overlap))
+        pts = min(2, len(code_overlap))
         score += pts
 
-    # Route/write endpoint targeting. General parsers often miss route
-    # handlers, so route units need enough weight to beat broad auth matches.
-    wants_write_endpoint = _task_wants_write_endpoint(task_tokens, expanded_tokens)
+    score += _framework_score(unit, intent)
+
+    wants_write_endpoint = _task_wants_write_endpoint(intent)
     if _is_route_unit(unit):
         method = _route_method(unit)
-        write_methods = {"post", "put", "patch", "delete"}
-        if wants_write_endpoint and method in write_methods:
+        if wants_write_endpoint and method and method not in WRITE_METHODS:
+            return 0.0, []
+        if wants_write_endpoint and method in WRITE_METHODS:
             score += 18
             reasons.append(f"write route endpoint: {method.upper()}")
         elif "route" in expanded_tokens or "endpoint" in expanded_tokens:
             score += 8
             reasons.append("route endpoint")
 
-        if {"auth", "middleware"} & expanded_tokens and method in write_methods:
+        if intent["auth"] and method in WRITE_METHODS:
             route_expression = _route_expression_code(unit).lower()
             if "requireauth" not in route_expression:
                 score += 8
@@ -305,18 +449,27 @@ def _score_unit(
             score += 6
             reasons.append("route handles user attribution")
 
-    # For backend write/auth tasks, keep the selection focused on backend
-    # routes/services. Otherwise generic auth/user aliases pull in UI and shared
-    # type definitions, which tempts the agent to read files manually.
-    if wants_write_endpoint:
+    if intent["backend"] or intent["api"]:
         lower_path = unit.file_path.lower()
-        if _is_public_auth_route(unit) and not ({"login", "register"} & task_tokens):
+        if wants_write_endpoint and "/repositories/" in f"/{lower_path}":
             score = 0.0
             reasons = []
-        elif lower_path.startswith("apps/web/") or lower_path.startswith("packages/shared/"):
-            score *= 0.35
+        elif wants_write_endpoint and lower_path.endswith("/app.ts"):
+            score = 0.0
+            reasons = []
+        elif wants_write_endpoint and "/lib/jwt" in f"/{lower_path}" and unit.symbol_name.lower() not in {"verifytoken", "verify_token"}:
+            score = 0.0
+            reasons = []
+        elif _is_public_auth_route(unit) and not ({"login", "register"} & task_tokens):
+            score = 0.0
+            reasons = []
+        elif _is_frontend_file(unit.file_path) and not intent["frontend"]:
+            score *= 0.10
             if score > 0:
                 reasons.append("deprioritized non-backend context")
+        elif lower_path.startswith("packages/shared/") and not _is_request_user_typing(unit):
+            score = 0.0
+            reasons = []
 
     return score, reasons
 
@@ -343,6 +496,7 @@ def select_units(
     # Tokenize
     task_tokens = _tokenize(task)
     expanded_tokens = _expand_aliases(task_tokens)
+    intent = _detect_intent(task_tokens, expanded_tokens)
     error_tokens = _tokenize(error_log) if error_log else set()
 
     # Extract file paths from error log
@@ -354,8 +508,8 @@ def select_units(
     # ── Phase 1: Score all units ───────────────────────────────────────────
     scored = []
     for unit in all_units:
-        score, reasons = _score_unit(unit, task_tokens, expanded_tokens, error_tokens, file_path_hits)
-        if score > 0:
+        score, reasons = _score_unit(unit, task_tokens, expanded_tokens, error_tokens, file_path_hits, intent)
+        if score >= 1:
             scored.append(SelectedUnit(unit=unit, score=score, reasons=reasons))
 
     scored.sort(key=lambda s: -s.score)
@@ -384,18 +538,28 @@ def select_units(
             continue
 
         # Only add if: has a score OR shares name tokens with a top unit
-        sib_score, sib_reasons = _score_unit(unit, task_tokens, expanded_tokens, error_tokens, file_path_hits)
+        sib_score, sib_reasons = _score_unit(unit, task_tokens, expanded_tokens, error_tokens, file_path_hits, intent)
         shares_name = any(_shares_name_tokens(unit, top_u) for top_u in top_units)
+        if _is_route_unit(unit):
+            directly_related = (
+                _shares_task_tokens(unit, expanded_tokens)
+                or _is_similar_route_handler(unit, top_units, intent)
+            )
+        else:
+            directly_related = (
+                _shares_task_tokens(unit, expanded_tokens)
+                or shares_name
+            )
 
-        if sib_score > 0:
+        if sib_score >= 3 and directly_related:
             sib_reasons.append("same-file sibling with relevance")
             selected_ids.add(unit.unit_id)
             selected.append(SelectedUnit(unit=unit, score=sib_score, reasons=sib_reasons))
-        elif shares_name:
+        elif directly_related and _is_similar_route_handler(unit, top_units, intent):
             selected_ids.add(unit.unit_id)
             selected.append(SelectedUnit(
                 unit=unit, score=1.0,
-                reasons=[f"same-file sibling, shares name pattern with {[u.symbol_name for u in top_units if _shares_name_tokens(unit, u)]}"]
+                reasons=["same-file related route handler"]
             ))
 
     # ── Phase 4: Call graph neighbors ──────────────────────────────────────
@@ -407,8 +571,10 @@ def select_units(
                 break
             if unit.unit_id in selected_ids:
                 continue
-            n_score, n_reasons = _score_unit(unit, task_tokens, expanded_tokens, error_tokens, file_path_hits)
-            if n_score > 0:
+            n_score, n_reasons = _score_unit(unit, task_tokens, expanded_tokens, error_tokens, file_path_hits, intent)
+            if _task_wants_write_endpoint(intent) and "/repositories/" in f"/{unit.file_path.lower()}":
+                continue
+            if n_score >= 3:
                 n_reasons.append("call graph neighbor")
                 selected_ids.add(unit.unit_id)
                 selected.append(SelectedUnit(unit=unit, score=n_score, reasons=n_reasons))
@@ -468,9 +634,9 @@ def select_units(
                 selected_ids.add(unit.unit_id)
                 selected.append(SelectedUnit(unit=unit, score=test_score, reasons=test_reasons))
 
-    # ── Phase 6: Coverage-based confidence (improvement #5) ────────────────
+    # ── Phase 6: Internal confidence bookkeeping ───────────────────────────
     coverage = {}
-    wants_write_endpoint = _task_wants_write_endpoint(task_tokens, expanded_tokens)
+    wants_write_endpoint = _task_wants_write_endpoint(intent)
 
     # target_found: did we find a unit whose name directly matches the task?
     coverage["target_found"] = any(

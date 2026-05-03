@@ -65,6 +65,70 @@ export function listIdeas(filters = {}) {
         encoding="utf-8",
     )
 
+    rate_limit_file = tmp_path / "apps/api/src/middleware/rateLimit.ts"
+    rate_limit_file.write_text(
+        """export function rateLimit() {
+  return (_req, _res, next) => next();
+}
+""",
+        encoding="utf-8",
+    )
+
+    typing_file = tmp_path / "apps/api/src/types/express.d.ts"
+    typing_file.parent.mkdir(parents=True)
+    typing_file.write_text(
+        """declare global {
+  namespace Express {
+    interface Request {
+      user?: { id: string };
+    }
+  }
+}
+""",
+        encoding="utf-8",
+    )
+
+    frontend_hook = tmp_path / "apps/web/src/hooks/useAuth.ts"
+    frontend_hook.parent.mkdir(parents=True)
+    frontend_hook.write_text(
+        """export function useAuth() {
+  return { login: async () => undefined };
+}
+""",
+        encoding="utf-8",
+    )
+
+    frontend_page = tmp_path / "apps/web/src/pages/LoginPage.tsx"
+    frontend_page.parent.mkdir(parents=True)
+    frontend_page.write_text(
+        """export function LoginPage() {
+  return null;
+}
+""",
+        encoding="utf-8",
+    )
+
+    shared_user = tmp_path / "packages/shared/src/types/user.ts"
+    shared_user.parent.mkdir(parents=True)
+    shared_user.write_text(
+        """export interface User {
+  id: string;
+}
+""",
+        encoding="utf-8",
+    )
+
+    test_file = tmp_path / "apps/api/src/routes/ideas.test.ts"
+    test_file.write_text(
+        """import { ideasRouter } from "./ideas";
+
+test("POST /ideas requires auth", () => {
+  expect(ideasRouter).toBeDefined();
+});
+""",
+        encoding="utf-8",
+    )
+
     result = run_index(str(tmp_path))
 
     with Database(result.index_path) as db:
@@ -77,8 +141,15 @@ export function listIdeas(filters = {}) {
         )
 
     selected = {(item.unit.file_path, item.unit.symbol_name) for item in selection.units}
+    selected_paths = {item.unit.file_path for item in selection.units}
 
     assert ("apps/api/src/routes/ideas.ts", "post_root") in selected
+    assert ("apps/api/src/middleware/requireAuth.ts", "requireAuth") in selected
+    assert any(path.endswith("express.d.ts") for path in selected_paths)
     assert ("apps/api/src/services/ideaService.ts", "createIdea") in selected
-    assert selection.coverage["write_endpoint_found"] is True
-    assert selection.confidence_label == "high"
+    assert any("ideas.test.ts" in path for path in selected_paths)
+
+    assert ("apps/web/src/hooks/useAuth.ts", "useAuth") not in selected
+    assert ("apps/web/src/pages/LoginPage.tsx", "LoginPage") not in selected
+    assert ("packages/shared/src/types/user.ts", "User") not in selected
+    assert ("apps/api/src/middleware/rateLimit.ts", "rateLimit") not in selected
