@@ -58,7 +58,7 @@ ALIASES = {
     "writes":         {"write", "post", "put", "patch", "delete", "create", "update"},
     "writing":        {"write", "post", "put", "patch", "delete", "create", "update"},
     "create":         {"post", "insert", "add", "save"},
-    "update":         {"put", "patch", "modify", "edit", "change"},
+    "update":         {"modify", "edit", "change"},
     "remove":         {"delete", "destroy"},
     "read":           {"get", "list", "search", "fetch", "query"},
     "list":           {"get", "read", "fetch"},
@@ -184,7 +184,12 @@ def _is_route_unit(unit: "CodeUnit") -> bool:
 
 
 def _task_wants_write_endpoint(intent: Dict[str, bool]) -> bool:
-    """Detect tasks that need write endpoint context."""
+    """Detect tasks that need write endpoint context.
+
+    Requires both a write signal AND an explicit backend/api/auth signal.
+    A task like "update affected tests" has write=True from the alias expansion
+    of "update", but no backend signal — it should not trigger endpoint filtering.
+    """
     return intent["write"] and (intent["backend"] or intent["api"] or intent["auth"])
 
 
@@ -504,6 +509,12 @@ def _score_unit(
             score = 0.0
             reasons = []
 
+    # Suppress tooling files for any task that doesn't explicitly mention the tool.
+    # This must run outside the backend/api block so it catches all intent types.
+    if _is_tooling_file(unit.file_path) and not (task_tokens & {"miser", "selector", "indexer", "index", "scanner", "parser"}):
+        score = 0.0
+        reasons = []
+
     return score, reasons
 
 
@@ -607,7 +618,11 @@ def select_units(
             n_score, n_reasons = _score_unit(unit, task_tokens, expanded_tokens, error_tokens, file_path_hits, intent)
             if _task_wants_write_endpoint(intent) and "/repositories/" in f"/{unit.file_path.lower()}":
                 continue
-            if n_score >= 3:
+            # Threshold is intentionally low (>= 1): neighbors are already
+            # pre-qualified by being in the call graph of a selected unit.
+            # A function that only matches on code body (e.g. createIdea
+            # containing "votes") should still be included.
+            if n_score >= 1:
                 n_reasons.append("call graph neighbor")
                 selected_ids.add(unit.unit_id)
                 selected.append(SelectedUnit(unit=unit, score=n_score, reasons=n_reasons))
