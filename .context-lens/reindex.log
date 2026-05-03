@@ -214,3 +214,9 @@ Traceback (most recent call last):
   File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 51, in main
     from indexer.core import run_index
 ModuleNotFoundError: No module named 'indexer.core'
+Traceback (most recent call last):
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 77, in <module>
+    main()
+  File "/Users/tayingthao/Documents/Kirohacks/cli.py", line 51, in main
+    from indexer.core import run_index
+ModuleNotFoundError: No module named 'indexer.core'

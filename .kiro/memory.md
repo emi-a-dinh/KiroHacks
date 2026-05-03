@@ -516,3 +516,17 @@
 **Issues encountered:** None — discussion only.
 
 **Open items:** Check if Kiro has a model selector in its settings. A smaller model with the Power's focused context might outperform a larger model with full-file dumps — that would be a compelling benchmark angle. The Power's value is stronger with smaller context windows.
+
+## 2026-05-02 — Pivot to CLI-based miser benchmark (no MCP overhead)
+
+**What changed:**
+- `token-miser/src/cli.py` — fixed `cmd_fix`/`cmd_ask`/`cmd_plan` to call `run_context` instead of removed `run_fix`/`run_ask`/`run_plan` (broken by merge from main that refactored smart.py)
+- `.kiro/settings/mcp.json` — disabled for baseline
+- `.kiro/steering/token-miser.md` → `.disabled` — disabled for baseline
+- `benchmark_output/session_script.json` — trimmed to 1 session, 1 turn
+
+**Decisions made:** Pivoted from MCP-based Power to CLI-based miser. Instead of Kiro invoking miser_fix as an MCP tool (which adds API round-trip overhead), user runs `miser fix` from CLI, copies the signature context output, and pastes it into Kiro's chat as prepended context. This eliminates MCP overhead and tests whether the focused context helps the model find the bug.
+
+**Issues encountered:** CLI was broken after merge — `run_fix`/`run_ask`/`run_plan` were consolidated into `run_context` in smart.py but CLI still referenced the old names. Fixed by updating all three CLI handlers.
+
+**Open items:** User will test baseline (no context) vs treatment (miser CLI context prepended) on a lower model. Compare whether the miser context helps the model find and fix the dispatch_request bug. No proxy needed for this approach.
