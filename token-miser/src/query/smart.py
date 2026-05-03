@@ -91,6 +91,50 @@ def _build_context_block(
     return "\n".join(lines)
 
 
+# ── Caveman mode ───────────────────────────────────────────────────────────────
+
+_CAVEMAN_INSTRUCTIONS = {
+    "fix":  "Edit. Use C first. Inspect nearest route/service/test if needed. Add or update tests. Run tests. Reply: Changed, Tests, Result.",
+    "ask":  "Answer from C only. If missing, say what file to check.",
+    "plan": "Plan only. Use C. Output steps and files.",
+}
+
+_CAVEMAN_K = {
+    "fix":  8,
+    "ask":  5,
+    "plan": 10,
+}
+
+_UNIT_TRUNCATE_LINES = 120  # lines; units larger than this get trimmed in caveman mode
+
+
+def _maybe_truncate(code: str) -> str:
+    """Truncate very large units in caveman mode, keeping signature + body start."""
+    lines = code.splitlines()
+    if len(lines) <= _UNIT_TRUNCATE_LINES:
+        return code
+    kept = lines[:_UNIT_TRUNCATE_LINES]
+    kept.append("# ... (truncated)")
+    return "\n".join(kept)
+
+
+def _build_caveman_block(selected_units) -> str:  # List[SelectedUnit]
+    """
+    Caveman context block — code only, no edge comments, truncated headers.
+
+    Format per unit:
+        ### path:start-end
+        <code>
+    """
+    lines = []
+    for su in selected_units:
+        unit = su.unit
+        lines.append(f"### {unit.file_path}:{unit.start_line}-{unit.end_line}")
+        lines.append(_maybe_truncate(unit.full_code.rstrip()))
+        lines.append("")
+    return "\n".join(lines)
+
+
 def _select_with_reindex_retry(
     repo_path: str,
     index_path: str,
@@ -114,6 +158,7 @@ def run_fix(
     repo_path: str = ".",
     error_log: Optional[str] = None,
     k: int = 10,
+    caveman: bool = False,
 ) -> str:
     """
     lens fix — the main command.
@@ -130,11 +175,12 @@ def run_fix(
     from storage.db import Database
     from query.selector import select_units
 
+    effective_k = _CAVEMAN_K["fix"] if caveman else k
     index_path = _ensure_index(repo_path)
 
     def selector(db):
         return select_units(
-            db, task, error_log, k=k,
+            db, task, error_log, k=effective_k,
             include_neighbors=True,
             include_tests=True,
         )
@@ -142,12 +188,18 @@ def run_fix(
     result, index_path = _select_with_reindex_retry(repo_path, index_path, selector, Database)
 
     if not result.units:
+        if caveman:
+            return f"T\n{task}\n\nC\nNo units found.\n\nD\n{_CAVEMAN_INSTRUCTIONS['fix']}"
         return (
             f"## Task\n{task}\n\n"
             "## Selection\n"
             "No relevant code units found. The index may be empty or the task "
             "description doesn't match any symbols in the codebase.\n"
         )
+
+    if caveman:
+        lines = ["T", task, "", "C", "", _build_caveman_block(result.units), "D", _CAVEMAN_INSTRUCTIONS["fix"]]
+        return "\n".join(lines)
 
     with Database(index_path) as db:
         context_block = _build_context_block(result.units, db)
@@ -185,6 +237,7 @@ def run_ask(
     repo_path: str = ".",
     error_log: Optional[str] = None,
     k: int = 8,
+    caveman: bool = False,
 ) -> str:
     """lens ask — answer a question about the codebase."""
     import sys
@@ -194,11 +247,12 @@ def run_ask(
     from storage.db import Database
     from query.selector import select_units
 
+    effective_k = _CAVEMAN_K["ask"] if caveman else k
     index_path = _ensure_index(repo_path)
 
     def selector(db):
         return select_units(
-            db, question, error_log, k=k,
+            db, question, error_log, k=effective_k,
             include_neighbors=True,
             include_tests=False,
         )
@@ -206,7 +260,13 @@ def run_ask(
     result, index_path = _select_with_reindex_retry(repo_path, index_path, selector, Database)
 
     if not result.units:
+        if caveman:
+            return f"T\n{question}\n\nC\nNo units found.\n\nD\n{_CAVEMAN_INSTRUCTIONS['ask']}"
         return f"## Question\n{question}\n\n## Selection\nNo relevant code units found.\n"
+
+    if caveman:
+        lines = ["T", question, "", "C", "", _build_caveman_block(result.units), "D", _CAVEMAN_INSTRUCTIONS["ask"]]
+        return "\n".join(lines)
 
     with Database(index_path) as db:
         context_block = _build_context_block(result.units, db)
@@ -237,6 +297,7 @@ def run_plan(
     repo_path: str = ".",
     error_log: Optional[str] = None,
     k: int = 12,
+    caveman: bool = False,
 ) -> str:
     """lens plan — create an implementation plan without making changes."""
     import sys
@@ -246,11 +307,12 @@ def run_plan(
     from storage.db import Database
     from query.selector import select_units
 
+    effective_k = _CAVEMAN_K["plan"] if caveman else k
     index_path = _ensure_index(repo_path)
 
     def selector(db):
         return select_units(
-            db, task, error_log, k=k,
+            db, task, error_log, k=effective_k,
             include_neighbors=True,
             include_tests=True,
         )
@@ -258,7 +320,13 @@ def run_plan(
     result, index_path = _select_with_reindex_retry(repo_path, index_path, selector, Database)
 
     if not result.units:
+        if caveman:
+            return f"T\n{task}\n\nC\nNo units found.\n\nD\n{_CAVEMAN_INSTRUCTIONS['plan']}"
         return f"## Task\n{task}\n\n## Selection\nNo relevant code units found.\n"
+
+    if caveman:
+        lines = ["T", task, "", "C", "", _build_caveman_block(result.units), "D", _CAVEMAN_INSTRUCTIONS["plan"]]
+        return "\n".join(lines)
 
     with Database(index_path) as db:
         context_block = _build_context_block(result.units, db)

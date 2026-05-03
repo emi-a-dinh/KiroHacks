@@ -56,15 +56,15 @@ def _dim(t):
 
 def cmd_fix(args):
     run_fix = _lazy_import("query.smart", "run_fix")
-    print(run_fix(args.task, repo_path=_find_repo(), error_log=args.error, k=args.k))
+    print(run_fix(args.task, repo_path=_find_repo(), error_log=args.error, k=args.k, caveman=args.caveman))
 
 def cmd_ask(args):
     run_ask = _lazy_import("query.smart", "run_ask")
-    print(run_ask(args.question, repo_path=_find_repo(), error_log=args.error))
+    print(run_ask(args.question, repo_path=_find_repo(), error_log=args.error, caveman=args.caveman))
 
 def cmd_plan(args):
     run_plan = _lazy_import("query.smart", "run_plan")
-    print(run_plan(args.task, repo_path=_find_repo(), error_log=args.error))
+    print(run_plan(args.task, repo_path=_find_repo(), error_log=args.error, caveman=args.caveman))
 
 def cmd_index(args):
     run_index = _lazy_import("indexer.core", "run_index")
@@ -112,14 +112,17 @@ No manual indexing, unit IDs, or expansion needed. Just describe the task.
 
     p = sub.add_parser("fix", help="Select code and get fix instructions")
     p.add_argument("task"); p.add_argument("--error", "-e"); p.add_argument("--k", "-k", type=int, default=10)
+    p.add_argument("--caveman", action="store_true", help="Compressed output to reduce token usage")
     p.set_defaults(func=cmd_fix)
 
     p = sub.add_parser("ask", help="Ask a question about the codebase")
     p.add_argument("question"); p.add_argument("--error", "-e")
+    p.add_argument("--caveman", action="store_true", help="Compressed output to reduce token usage")
     p.set_defaults(func=cmd_ask)
 
     p = sub.add_parser("plan", help="Get an implementation plan")
     p.add_argument("task"); p.add_argument("--error", "-e")
+    p.add_argument("--caveman", action="store_true", help="Compressed output to reduce token usage")
     p.set_defaults(func=cmd_plan)
 
     p = sub.add_parser("tree", help="View the unit tree")

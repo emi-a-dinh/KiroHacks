@@ -15,7 +15,7 @@ mcp = FastMCP("token-miser")
 
 
 @mcp.tool()
-def miser_fix(task: str, repo_path: str = ".", error_log: str | None = None) -> str:
+def miser_fix(task: str, repo_path: str = ".", error_log: str | None = None, caveman: bool = False) -> str:
     """Select relevant code for a bug fix or implementation task.
 
     Auto-indexes if needed. Returns selected code with fix instructions.
@@ -24,13 +24,14 @@ def miser_fix(task: str, repo_path: str = ".", error_log: str | None = None) -> 
         task: What needs to be fixed or implemented.
         repo_path: Path to repo root.
         error_log: Optional error traceback or log.
+        caveman: If True, return compressed output to reduce token usage.
     """
     from query.smart import run_fix
-    return run_fix(task, repo_path=repo_path, error_log=error_log)
+    return run_fix(task, repo_path=repo_path, error_log=error_log, caveman=caveman)
 
 
 @mcp.tool()
-def miser_ask(question: str, repo_path: str = ".", error_log: str | None = None) -> str:
+def miser_ask(question: str, repo_path: str = ".", error_log: str | None = None, caveman: bool = False) -> str:
     """Answer a question about the codebase.
 
     Auto-indexes if needed. Returns relevant code. No edits.
@@ -39,13 +40,14 @@ def miser_ask(question: str, repo_path: str = ".", error_log: str | None = None)
         question: What you want to know.
         repo_path: Path to repo root.
         error_log: Optional error traceback or log.
+        caveman: If True, return compressed output to reduce token usage.
     """
     from query.smart import run_ask
-    return run_ask(question, repo_path=repo_path, error_log=error_log)
+    return run_ask(question, repo_path=repo_path, error_log=error_log, caveman=caveman)
 
 
 @mcp.tool()
-def miser_plan(task: str, repo_path: str = ".", error_log: str | None = None) -> str:
+def miser_plan(task: str, repo_path: str = ".", error_log: str | None = None, caveman: bool = False) -> str:
     """Create an implementation plan.
 
     Auto-indexes if needed. Returns relevant code with planning instructions. No edits.
@@ -54,9 +56,10 @@ def miser_plan(task: str, repo_path: str = ".", error_log: str | None = None) ->
         task: What needs to be built or changed.
         repo_path: Path to repo root.
         error_log: Optional error traceback or log.
+        caveman: If True, return compressed output to reduce token usage.
     """
     from query.smart import run_plan
-    return run_plan(task, repo_path=repo_path, error_log=error_log)
+    return run_plan(task, repo_path=repo_path, error_log=error_log, caveman=caveman)
 
 
 if __name__ == "__main__":
