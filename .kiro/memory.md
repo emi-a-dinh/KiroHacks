@@ -130,3 +130,16 @@
 **Issues encountered:** Other Kiro window couldn't connect to MCP server — user-level config had wrong username and Python path from a different machine. Fixed by updating `~/.kiro/settings/mcp.json`. Also clarified that steering files (`.kiro/steering/`) are auto-included in every conversation, so baseline runs need the steering file removed/renamed to be truly "no Power."
 
 **Open items:** User wants to plan automation improvements to the benchmark before building them. Key ideas: automated prompt injection, consistent timing, better session boundary tracking. The finding that Token Miser adds overhead on small projects is worth investigating — may need larger/more complex projects to see token savings.
+
+## 2026-05-02 — Automated benchmark testing requirements spec
+
+**What changed:**
+- `.kiro/specs/automated-benchmark-testing/requirements.md` — new requirements doc covering 9 areas: automated execution, power management, Kiro process management, prompt delivery, response detection, session boundaries, automation config, progress reporting, error recovery
+- `.kiro/specs/automated-benchmark-testing/.config.kiro` — spec config (requirements-first workflow, feature type)
+- `example_project/` — minor changes to models, routes, and tests (from earlier session, committed together)
+
+**Decisions made:** Requirements-first workflow chosen. Automation replaces the manual copy-paste-wait-enter loop with an Automation Driver that launches Kiro as a subprocess, sends prompts programmatically, and detects response completion via JSONL idle timeout. Power toggling (mcp.json + steering file) is automated between baseline/treatment runs with backup/restore.
+
+**Issues encountered:** Several `__pycache__/`, `.context-lens/`, and `.token-miser/index.db` files were showing as modified in git despite `.gitignore` — they're tracked from earlier commits. Unstaged them manually before committing.
+
+**Open items:** Design doc is next. The `__pycache__` and index DB files still need `git rm --cached` to stop tracking them permanently.
