@@ -32,7 +32,7 @@ STOP_WORDS = {
 
 WRITE_TERMS = {"write", "writes", "writing", "post", "put", "patch", "delete", "create", "update", "insert", "save"}
 READ_TERMS = {"read", "get", "list", "search", "fetch", "find", "query"}
-AUTH_TERMS = {"auth", "authentication", "authorization", "token", "jwt", "session", "user", "owner", "permission", "401", "403"}
+AUTH_TERMS = {"auth", "authentication", "authorization", "jwt", "session", "user", "owner", "permission", "401", "403"}
 BACKEND_TERMS = {"backend", "server", "api", "route", "routes", "endpoint", "handler", "middleware", "controller", "service"}
 FRONTEND_TERMS = {"frontend", "front", "ui", "ux", "component", "components", "page", "pages", "hook", "hooks", "form", "button"}
 TEST_TERMS = {"test", "tests", "spec", "assert", "expect", "coverage"}
@@ -63,8 +63,8 @@ ALIASES = {
     "read":           {"get", "list", "search", "fetch", "query"},
     "list":           {"get", "read", "fetch"},
     "search":         {"get", "read", "query", "filter"},
-    "auth":           {"authentication", "authorization", "token", "jwt", "session", "user", "owner", "permission", "401", "403"},
-    "authentication": {"auth", "token", "jwt", "session", "user"},
+    "auth":           {"authentication", "authorization", "jwt", "session", "user", "owner", "permission", "401", "403"},
+    "authentication": {"auth", "jwt", "session", "user"},
     "authorization":  {"auth", "owner", "permission", "401", "403"},
     "authenticated":  {"auth", "session", "user"},
     "middleware":     {"requireauth", "auth"},
@@ -174,8 +174,13 @@ def _detect_intent(task_tokens: Set[str], expanded_tokens: Set[str]) -> Dict[str
 
 
 def _is_route_unit(unit: "CodeUnit") -> bool:
-    """Return true for route handler units and route-like file paths."""
-    return unit.unit_type == "route" or "/routes/" in f"/{unit.file_path.lower()}"
+    """Return true only for explicitly typed route handler units.
+
+    We intentionally do NOT match by file path alone. Functions that live in a
+    routes/ directory (helpers, middleware, etc.) are regular functions and
+    should not be subject to HTTP-method filtering.
+    """
+    return unit.unit_type == "route"
 
 
 def _task_wants_write_endpoint(intent: Dict[str, bool]) -> bool:
@@ -214,6 +219,22 @@ def _is_backend_file(file_path: str) -> bool:
     )
 
 
+def _is_tooling_file(file_path: str) -> bool:
+    """Return True for files that are part of the token-miser tool itself.
+
+    These files contain the same vocabulary as application tasks (auth, write,
+    user, etc.) because they implement the selector logic, and should not be
+    returned when the task is about a different application.
+    """
+    path = f"/{file_path.lower()}"
+    return (
+        "/token-miser/" in path
+        or "/context-lens/" in path
+        or "/.token-miser/" in path
+        or "/.context-lens/" in path
+    )
+
+
 def _is_request_user_typing(unit: "CodeUnit") -> bool:
     text = f"{unit.file_path}\n{unit.signature}\n{unit.full_code}".lower()
     return (
@@ -245,7 +266,13 @@ def _route_expression_code(unit: "CodeUnit") -> str:
 
 
 def _is_public_auth_route(unit: "CodeUnit") -> bool:
-    """Detect login/register auth routes that normally should not require auth."""
+    """Detect login/register auth routes that normally should not require auth.
+
+    Only applies to explicitly typed route units — not to helper functions that
+    happen to live in a routes/auth file.
+    """
+    if unit.unit_type != "route":
+        return False
     text = f"{unit.file_path} {unit.symbol_name} {unit.signature}".lower()
     return "/routes/auth" in f"/{unit.file_path.lower()}" or "login" in text or "register" in text
 
@@ -468,6 +495,12 @@ def _score_unit(
             if score > 0:
                 reasons.append("deprioritized non-backend context")
         elif lower_path.startswith("packages/shared/") and not _is_request_user_typing(unit):
+            score = 0.0
+            reasons = []
+        elif wants_write_endpoint and _is_tooling_file(unit.file_path):
+            # Suppress indexer/query/storage internals when the task is about
+            # application write endpoints — they only match because the tool
+            # source contains the same vocabulary (auth, write, user, etc.)
             score = 0.0
             reasons = []
 

@@ -91,6 +91,24 @@ def _build_context_block(
     return "\n".join(lines)
 
 
+def _select_with_reindex_retry(
+    repo_path: str,
+    index_path: str,
+    selector,
+    db_cls,
+):
+    """Run selector, then rebuild once if the current index gives no units."""
+    with db_cls(index_path) as db:
+        result = selector(db)
+        if result.units:
+            return result, index_path
+
+    from indexer.core import run_index
+    rebuilt = run_index(repo_path)
+    with db_cls(rebuilt.index_path) as db:
+        return selector(db), rebuilt.index_path
+
+
 def run_fix(
     task: str,
     repo_path: str = ".",
@@ -114,21 +132,24 @@ def run_fix(
 
     index_path = _ensure_index(repo_path)
 
-    with Database(index_path) as db:
-        result = select_units(
+    def selector(db):
+        return select_units(
             db, task, error_log, k=k,
             include_neighbors=True,
             include_tests=True,
         )
 
-        if not result.units:
-            return (
-                f"## Task\n{task}\n\n"
-                "## Selection\n"
-                "No relevant code units found. The index may be empty or the task "
-                "description doesn't match any symbols in the codebase.\n"
-            )
+    result, index_path = _select_with_reindex_retry(repo_path, index_path, selector, Database)
 
+    if not result.units:
+        return (
+            f"## Task\n{task}\n\n"
+            "## Selection\n"
+            "No relevant code units found. The index may be empty or the task "
+            "description doesn't match any symbols in the codebase.\n"
+        )
+
+    with Database(index_path) as db:
         context_block = _build_context_block(result.units, db)
 
     lines = []
@@ -175,16 +196,19 @@ def run_ask(
 
     index_path = _ensure_index(repo_path)
 
-    with Database(index_path) as db:
-        result = select_units(
+    def selector(db):
+        return select_units(
             db, question, error_log, k=k,
             include_neighbors=True,
             include_tests=False,
         )
 
-        if not result.units:
-            return f"## Question\n{question}\n\n## Selection\nNo relevant code units found.\n"
+    result, index_path = _select_with_reindex_retry(repo_path, index_path, selector, Database)
 
+    if not result.units:
+        return f"## Question\n{question}\n\n## Selection\nNo relevant code units found.\n"
+
+    with Database(index_path) as db:
         context_block = _build_context_block(result.units, db)
 
     lines = []
@@ -224,16 +248,19 @@ def run_plan(
 
     index_path = _ensure_index(repo_path)
 
-    with Database(index_path) as db:
-        result = select_units(
+    def selector(db):
+        return select_units(
             db, task, error_log, k=k,
             include_neighbors=True,
             include_tests=True,
         )
 
-        if not result.units:
-            return f"## Task\n{task}\n\n## Selection\nNo relevant code units found.\n"
+    result, index_path = _select_with_reindex_retry(repo_path, index_path, selector, Database)
 
+    if not result.units:
+        return f"## Task\n{task}\n\n## Selection\nNo relevant code units found.\n"
+
+    with Database(index_path) as db:
         context_block = _build_context_block(result.units, db)
 
     lines = []
