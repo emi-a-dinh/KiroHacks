@@ -24,7 +24,7 @@ def _require_descriptive_task(task: str) -> str | None:
 
 @mcp.tool()
 def miser_context(task: str, repo_path: str = ".", error_log: str | None = None, k: int = 5) -> str:
-    """Select relevant code units and return signatures only."""
+    """Select relevant code units and return signatures only. repo_path defaults to the current working directory."""
     error = _require_descriptive_task(task)
     if error:
         return error
@@ -35,7 +35,7 @@ def miser_context(task: str, repo_path: str = ".", error_log: str | None = None,
 
 @mcp.tool()
 def miser_read(symbol_name: str, repo_path: str = ".") -> str:
-    """Return full source of a single indexed unit by symbol name."""
+    """Return full source of a single indexed unit by symbol name. repo_path defaults to the current working directory."""
     from query.smart import run_read
 
     return run_read(symbol_name, repo_path=repo_path)
@@ -43,7 +43,7 @@ def miser_read(symbol_name: str, repo_path: str = ".") -> str:
 
 @mcp.tool()
 def miser_fix(task: str, repo_path: str = ".", error_log: str | None = None, k: int = 12) -> str:
-    """Select focused code context for an implementation or bug-fix task."""
+    """Select focused code context for an implementation or bug-fix task. repo_path defaults to the current working directory."""
     error = _require_descriptive_task(task)
     if error:
         return error
@@ -54,7 +54,7 @@ def miser_fix(task: str, repo_path: str = ".", error_log: str | None = None, k: 
 
 @mcp.tool()
 def miser_ask(question: str, repo_path: str = ".", error_log: str | None = None, k: int = 8) -> str:
-    """Select focused code context for a codebase question."""
+    """Select focused code context for a codebase question. repo_path defaults to the current working directory."""
     error = _require_descriptive_task(question)
     if error:
         return error
@@ -65,7 +65,7 @@ def miser_ask(question: str, repo_path: str = ".", error_log: str | None = None,
 
 @mcp.tool()
 def miser_plan(task: str, repo_path: str = ".", error_log: str | None = None, k: int = 10) -> str:
-    """Select focused code context for planning a change."""
+    """Select focused code context for planning a change. repo_path defaults to the current working directory."""
     error = _require_descriptive_task(task)
     if error:
         return error

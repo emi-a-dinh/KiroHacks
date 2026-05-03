@@ -1,8 +1,8 @@
 {
   "mcpServers": {
     "token-miser": {
-      "command": "/Library/Frameworks/Python.framework/Versions/3.13/bin/python3",
-      "args": ["/Users/edinhdawg/Documents/KiroHacks/token-miser/src/mcp_server.py"],
+      "command": "python3",
+      "args": ["${workspaceFolder}/token-miser/src/mcp_server.py"],
       "disabled": false,
       "autoApprove": ["miser_fix", "miser_ask", "miser_plan"]
     }
