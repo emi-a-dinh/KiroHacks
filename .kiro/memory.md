@@ -480,3 +480,17 @@
 **Issues encountered:** None — read-only analysis of existing project artifacts followed by writeup generation.
 
 **Open items:** The writeup is in `WRITEUP_RESPONSES.md` as a standalone file. User may want to merge portions into `WRITEUP.md` or format differently for submission.
+
+## 2026-05-02 — Cross-benchmark comparison: overhead shrinking with project size
+
+**What changed:**
+- `.kiro/memory.md` — appended comparison analysis
+
+**Decisions made:** None — analysis session.
+
+**Issues encountered:** None.
+
+**Open items:**
+- Overhead trend across benchmarks: example_project (~500 lines) = 4-5x, flask_project run 1 (~15K lines) = 3.0x, flask_project run 2 = 2.7x
+- The overhead is shrinking as project size increases, suggesting a crossover point around 50-100K lines where the Power starts saving tokens
+- For the hackathon writeup, this trend line is a compelling data point even though the Power doesn't win yet on these projects
