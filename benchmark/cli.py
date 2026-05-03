@@ -13,10 +13,10 @@ import json
 import os
 import sys
 
-from benchmark.config import load_config
-from benchmark.models import RunRecord
+from benchmark.config import load_config, validate_kiro_executable
+from benchmark.models import BenchmarkError, RunRecord
 from benchmark.orchestrator import Orchestrator
-from benchmark.proxy import ProxyManager, print_proxy_instructions
+from benchmark.proxy import ProxyManager
 from benchmark.reporter import (
     generate_comparison_report,
     print_summary_table,
@@ -135,6 +135,9 @@ def cmd_run(args: argparse.Namespace) -> None:
     """
     config = load_config(args.config)
 
+    # Validate Kiro executable before starting proxy
+    validate_kiro_executable(config)
+
     # Generate or load session script
     if os.path.exists(config.prompt_file):
         with open(config.prompt_file) as f:
@@ -149,9 +152,6 @@ def cmd_run(args: argparse.Namespace) -> None:
     # Set up proxy
     jsonl_path = os.path.join(config.output_dir, "tokens.jsonl")
     proxy = ProxyManager(port=config.proxy_port, jsonl_path=jsonl_path)
-
-    # Print proxy instructions
-    print_proxy_instructions(config.proxy_port)
 
     # Start proxy
     try:
@@ -179,6 +179,9 @@ def cmd_run(args: argparse.Namespace) -> None:
         print_summary_table(comparison)
 
         print(f"\nReports written to {config.output_dir}/")
+    except BenchmarkError as e:
+        print(f"Error: {e}")
+        raise SystemExit(1)
     finally:
         proxy.stop()
         print("Proxy stopped.")

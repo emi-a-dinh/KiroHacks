@@ -1,7 +1,7 @@
 """Data models for the AI IDE Token Benchmark."""
 
 from dataclasses import dataclass, field
-from typing import List
+from typing import Dict, List
 
 
 @dataclass
@@ -265,6 +265,49 @@ class ComparisonReport:
         )
 
 
+# Default mapping from turn role to MCP tool prefix for treatment runs
+DEFAULT_PREFIX_MAP: Dict[str, str] = {
+    "task_description": "miser-plan",
+    "clarifying_question": "miser-ask",
+    "implementation": "miser-fix",
+    "verification": "miser-ask",
+}
+
+
+@dataclass
+class AutomationConfig:
+    """Configuration for automated benchmark execution."""
+
+    kiro_path: str = "kiro"
+    idle_timeout: int = 30
+    turn_timeout: int = 300
+    startup_timeout: int = 60
+    treatment_prefix_map: Dict[str, str] = field(
+        default_factory=lambda: dict(DEFAULT_PREFIX_MAP)
+    )
+
+    def to_dict(self) -> dict:
+        return {
+            "kiro_path": self.kiro_path,
+            "idle_timeout": self.idle_timeout,
+            "turn_timeout": self.turn_timeout,
+            "startup_timeout": self.startup_timeout,
+            "treatment_prefix_map": dict(self.treatment_prefix_map),
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "AutomationConfig":
+        return cls(
+            kiro_path=data.get("kiro_path", "kiro"),
+            idle_timeout=data.get("idle_timeout", 30),
+            turn_timeout=data.get("turn_timeout", 300),
+            startup_timeout=data.get("startup_timeout", 60),
+            treatment_prefix_map=data.get(
+                "treatment_prefix_map", dict(DEFAULT_PREFIX_MAP)
+            ),
+        )
+
+
 @dataclass
 class BenchmarkConfig:
     """Configuration for a benchmark run."""
@@ -275,6 +318,7 @@ class BenchmarkConfig:
     output_format: str = "json"  # "json" | "csv"
     proxy_port: int = 8080
     timeout_seconds: int = 120
+    automation: AutomationConfig = field(default_factory=AutomationConfig)
 
     def to_dict(self) -> dict:
         return {
@@ -284,6 +328,7 @@ class BenchmarkConfig:
             "output_format": self.output_format,
             "proxy_port": self.proxy_port,
             "timeout_seconds": self.timeout_seconds,
+            "automation": self.automation.to_dict(),
         }
 
     @classmethod
@@ -295,4 +340,20 @@ class BenchmarkConfig:
             output_format=data.get("output_format", "json"),
             proxy_port=data.get("proxy_port", 8080),
             timeout_seconds=data.get("timeout_seconds", 120),
+            automation=AutomationConfig.from_dict(data.get("automation", {})),
         )
+
+
+@dataclass
+class WatchResult:
+    """Result from watching for response completion."""
+
+    entries: List[dict]
+    new_position: int
+    timed_out: bool
+
+
+class BenchmarkError(Exception):
+    """Raised when the benchmark must halt due to unrecoverable errors."""
+
+    pass

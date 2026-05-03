@@ -6,8 +6,8 @@ Replace the manual `input()`-driven benchmark orchestration with a fully automat
 
 ## Tasks
 
-- [ ] 1. Extend data models with AutomationConfig and BenchmarkError
-  - [ ] 1.1 Add `DEFAULT_PREFIX_MAP`, `AutomationConfig` dataclass, and `WatchResult` dataclass to `benchmark/models.py`
+- [x] 1. Extend data models with AutomationConfig and BenchmarkError
+  - [x] 1.1 Add `DEFAULT_PREFIX_MAP`, `AutomationConfig` dataclass, and `WatchResult` dataclass to `benchmark/models.py`
     - Add `DEFAULT_PREFIX_MAP` dict mapping turn roles to MCP tool prefixes: `task_description` → `miser-plan`, `clarifying_question` → `miser-ask`, `implementation` → `miser-fix`, `verification` → `miser-ask`
     - Add `AutomationConfig` dataclass with fields: `kiro_path` (default `"kiro"`), `idle_timeout` (default `30`), `turn_timeout` (default `300`), `startup_timeout` (default `60`), `treatment_prefix_map` (default from `DEFAULT_PREFIX_MAP`)
     - Add `to_dict()` and `from_dict()` methods on `AutomationConfig` that apply defaults for missing keys
@@ -15,7 +15,7 @@ Replace the manual `input()`-driven benchmark orchestration with a fully automat
     - Add `BenchmarkError(Exception)` class for unrecoverable benchmark errors
     - _Requirements: 7.1, 7.2, 10.3_
 
-  - [ ] 1.2 Extend `BenchmarkConfig` to include `automation: AutomationConfig` field
+  - [x] 1.2 Extend `BenchmarkConfig` to include `automation: AutomationConfig` field
     - Add `automation` field with `field(default_factory=AutomationConfig)` to `BenchmarkConfig`
     - Update `BenchmarkConfig.to_dict()` to include `automation` key
     - Update `BenchmarkConfig.from_dict()` to parse `automation` section using `AutomationConfig.from_dict()`, defaulting to `AutomationConfig()` when absent
@@ -31,23 +31,23 @@ Replace the manual `input()`-driven benchmark orchestration with a fully automat
     - Generate random prefix map dicts mapping the four turn roles to random non-empty strings. Serialize `AutomationConfig` to dict, parse back, assert `treatment_prefix_map` equivalence. Also test with omitted key to verify defaults.
     - **Validates: Requirements 10.3, 10.4**
 
-- [ ] 2. Extend config parser for automation section
-  - [ ] 2.1 Update `benchmark/config.py` to parse and validate the `automation` YAML section
+- [x] 2. Extend config parser for automation section
+  - [x] 2.1 Update `benchmark/config.py` to parse and validate the `automation` YAML section
     - Parse `automation` dict from YAML data and pass to `AutomationConfig.from_dict()`
     - Add validation for automation fields: `idle_timeout`, `turn_timeout`, `startup_timeout` must be positive integers; `kiro_path` must be a non-empty string; `treatment_prefix_map` values must be non-empty strings
     - Update `serialize_config()` to include the `automation` section in YAML output
     - _Requirements: 7.1, 7.2_
 
-  - [ ] 2.2 Add `kiro_path` executable validation in config loading
+  - [x] 2.2 Add `kiro_path` executable validation in config loading
     - Check `shutil.which(kiro_path)` during config validation
     - Emit descriptive error message and halt if Kiro executable not found on PATH
     - _Requirements: 7.4_
 
-- [ ] 3. Checkpoint - Ensure all tests pass
+- [x] 3. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 4. Implement PowerManager
-  - [ ] 4.1 Create `benchmark/automation_driver.py` with `PowerManager` class
+- [x] 4. Implement PowerManager
+  - [x] 4.1 Create `benchmark/automation_driver.py` with `PowerManager` class
     - Implement `__init__(self, repo_path: str)` that resolves paths to `.kiro/settings/mcp.json` and `.kiro/steering/token-miser.md`
     - Implement `backup()` — reads and stores original contents of both files in memory; raises `FileNotFoundError` for missing MCP config, logs warning for missing steering file
     - Implement `disable_power()` — sets `"disabled": true` in mcp.json for the `token-miser` server entry; renames `token-miser.md` to `token-miser.md.disabled`
@@ -67,8 +67,8 @@ Replace the manual `input()`-driven benchmark orchestration with a fully automat
     - Test `enable_power()` restores steering file from `.disabled` (Req 2.4)
     - _Requirements: 2.1, 2.2, 2.3, 2.4_
 
-- [ ] 5. Implement PromptSender with treatment prefixing
-  - [ ] 5.1 Add `PromptSender` class to `benchmark/automation_driver.py`
+- [x] 5. Implement PromptSender with treatment prefixing
+  - [x] 5.1 Add `PromptSender` class to `benchmark/automation_driver.py`
     - Implement `__init__(self, kiro_process, prefix_map=None)` that stores the process and prefix map (defaulting to `DEFAULT_PREFIX_MAP`)
     - Implement `send(self, prompt, run_type="baseline", role="")` — for baseline: writes prompt + newline to stdin and flushes; for treatment: calls `_apply_prefix()` then writes prefixed prompt + newline
     - Implement `_apply_prefix(self, prompt, role)` — looks up role in prefix_map, returns `"{prefix} {prompt}"`; if role not found, returns prompt verbatim and logs warning
@@ -95,8 +95,8 @@ Replace the manual `input()`-driven benchmark orchestration with a fully automat
     - Test prefix is logged for each treatment turn (Req 10.6)
     - _Requirements: 10.1, 10.2, 10.3, 10.4, 10.6_
 
-- [ ] 6. Implement ResponseWatcher
-  - [ ] 6.1 Add `ResponseWatcher` class to `benchmark/automation_driver.py`
+- [x] 6. Implement ResponseWatcher
+  - [x] 6.1 Add `ResponseWatcher` class to `benchmark/automation_driver.py`
     - Implement `__init__(self, proxy, idle_timeout, turn_timeout)` storing proxy reference and timeout values
     - Implement `wait_for_response(self, start_position)` — polls `proxy.read_new_entries(start_position)` at 1-second intervals; tracks idle timer (resets on new entries) and turn timer; returns `WatchResult` when idle_timeout exceeded after at least one entry, or when turn_timeout exceeded (with `timed_out=True`)
     - _Requirements: 5.1, 5.2, 5.3, 5.5_
@@ -111,11 +111,11 @@ Replace the manual `input()`-driven benchmark orchestration with a fully automat
     - Generate random multi-turn entry sequences with varying counts per turn. Simulate sequential `wait_for_response()` calls. Assert each turn's returned entries are disjoint from previous turns (zero overlap).
     - **Validates: Requirements 5.5**
 
-- [ ] 7. Checkpoint - Ensure all tests pass
+- [x] 7. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 8. Implement AutomationDriver
-  - [ ] 8.1 Add `AutomationDriver` class to `benchmark/automation_driver.py`
+- [x] 8. Implement AutomationDriver
+  - [x] 8.1 Add `AutomationDriver` class to `benchmark/automation_driver.py`
     - Implement `__init__(self, proxy, config)` storing proxy, config, and initializing restart counter and consecutive timeout counter
     - Implement `start_kiro()` — launches `kiro {repo_path}` as subprocess with `HTTPS_PROXY`, `HTTP_PROXY`, `NODE_TLS_REJECT_UNAUTHORIZED=0` env vars; waits up to `startup_timeout` for process to be alive; raises `BenchmarkError` on failure
     - Implement `stop_kiro()` — sends SIGTERM, waits 5s, then SIGKILL if needed (mirrors `ProxyManager.stop()` pattern)
@@ -124,7 +124,7 @@ Replace the manual `input()`-driven benchmark orchestration with a fully automat
     - Implement `check_health()` — returns True if Kiro process is still running
     - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 4.1, 4.3, 6.1, 6.2_
 
-  - [ ] 8.2 Implement restart logic in AutomationDriver
+  - [x] 8.2 Implement restart logic in AutomationDriver
     - Track consecutive timeout count; restart Kiro after 3 consecutive turns with zero JSONL entries
     - Track total restart count per run; raise `BenchmarkError` after 2 restarts
     - Log restart events including session ID and turn number
@@ -151,8 +151,8 @@ Replace the manual `input()`-driven benchmark orchestration with a fully automat
     - Test restart logs session and turn number (Req 9.3)
     - _Requirements: 3.1, 3.2, 3.4, 3.5, 3.6, 5.4, 9.1, 9.3_
 
-- [ ] 9. Refactor Orchestrator for automated execution
-  - [ ] 9.1 Modify `benchmark/orchestrator.py` to use AutomationDriver instead of manual `input()` loops
+- [x] 9. Refactor Orchestrator for automated execution
+  - [x] 9.1 Modify `benchmark/orchestrator.py` to use AutomationDriver instead of manual `input()` loops
     - Replace `input()` calls and rich Panel prompts with `AutomationDriver.run_turn()` calls
     - Pass `run_type` and `turn.role` to `run_turn()` so PromptSender applies correct prefix logic
     - Call `automation_driver.new_conversation()` between sessions
@@ -162,7 +162,7 @@ Replace the manual `input()`-driven benchmark orchestration with a fully automat
     - Write partial reports on error before exiting
     - _Requirements: 1.1, 1.2, 2.1, 2.2, 2.3, 2.4, 2.5, 3.3, 6.1, 6.3, 9.5, 9.6_
 
-  - [ ] 9.2 Add progress reporting to Orchestrator
+  - [x] 9.2 Add progress reporting to Orchestrator
     - Print progress line after each turn: run type, session number, turn number, credit usage (Req 8.1)
     - Print session summary line after each session with aggregate credit usage (Req 8.2)
     - Print total credit usage after each run completes (Req 8.3)
@@ -185,11 +185,11 @@ Replace the manual `input()`-driven benchmark orchestration with a fully automat
     - Generate SessionScripts with 1-10 sessions. Mock AutomationDriver. Assert `new_conversation()` called exactly N-1 times for N sessions, and zero times within a session.
     - **Validates: Requirements 6.1**
 
-- [ ] 10. Checkpoint - Ensure all tests pass
+- [x] 10. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 11. Update CLI to wire automation driver
-  - [ ] 11.1 Modify `benchmark/cli.py` `cmd_run()` to use the automated flow
+- [x] 11. Update CLI to wire automation driver
+  - [x] 11.1 Modify `benchmark/cli.py` `cmd_run()` to use the automated flow
     - Remove manual proxy instruction printing (`print_proxy_instructions`)
     - Wire up `AutomationDriver` and `PowerManager` through the `Orchestrator`
     - Check `shutil.which(config.automation.kiro_path)` before starting proxy; halt with descriptive error if not found
@@ -201,7 +201,7 @@ Replace the manual `input()`-driven benchmark orchestration with a fully automat
     - Test `cmd_run()` produces comparison report on completion (Req 1.3)
     - _Requirements: 1.3, 7.4_
 
-- [ ] 12. Integration testing
+- [x] 12. Integration testing
   - [ ]* 12.1 Write integration test with mock Kiro process
     - Create a mock Kiro script that reads stdin and writes predictable JSONL entries
     - Test full benchmark run: both baseline and treatment complete, reports generated, power state toggled correctly
@@ -214,7 +214,7 @@ Replace the manual `input()`-driven benchmark orchestration with a fully automat
     - Verify stop → reconfigure power → start sequence during run transition
     - _Requirements: 3.3, 6.3_
 
-- [ ] 13. Final checkpoint - Ensure all tests pass
+- [x] 13. Final checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 ## Notes

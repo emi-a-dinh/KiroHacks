@@ -4,6 +4,8 @@ Loads YAML configuration, validates required fields, applies defaults,
 and supports round-trip serialization.
 """
 
+import shutil
+
 import yaml
 
 from benchmark.models import BenchmarkConfig
@@ -90,5 +92,71 @@ def _validate_config(data: dict) -> None:
         print(
             f"Error: Invalid 'timeout_seconds' value '{timeout_seconds}'. "
             f"Must be a positive integer."
+        )
+        raise SystemExit(1)
+
+    # Validate optional automation section
+    automation = data.get("automation")
+    if automation is not None:
+        if not isinstance(automation, dict):
+            print(
+                f"Error: Invalid 'automation' section. Must be a YAML mapping."
+            )
+            raise SystemExit(1)
+
+        kiro_path = automation.get("kiro_path")
+        if kiro_path is not None:
+            if not isinstance(kiro_path, str) or not kiro_path.strip():
+                print(
+                    f"Error: Invalid 'automation.kiro_path' value '{kiro_path}'. "
+                    f"Must be a non-empty string."
+                )
+                raise SystemExit(1)
+
+        for timeout_field in ("idle_timeout", "turn_timeout", "startup_timeout"):
+            value = automation.get(timeout_field)
+            if value is not None:
+                if not isinstance(value, int) or value <= 0:
+                    print(
+                        f"Error: Invalid 'automation.{timeout_field}' value '{value}'. "
+                        f"Must be a positive integer."
+                    )
+                    raise SystemExit(1)
+
+        prefix_map = automation.get("treatment_prefix_map")
+        if prefix_map is not None:
+            if not isinstance(prefix_map, dict):
+                print(
+                    f"Error: Invalid 'automation.treatment_prefix_map'. "
+                    f"Must be a YAML mapping."
+                )
+                raise SystemExit(1)
+            for role, prefix in prefix_map.items():
+                if not isinstance(prefix, str) or not prefix.strip():
+                    print(
+                        f"Error: Invalid treatment_prefix_map value for role '{role}'. "
+                        f"Must be a non-empty string."
+                    )
+                    raise SystemExit(1)
+
+
+def validate_kiro_executable(config: BenchmarkConfig) -> None:
+    """Validate that the configured Kiro executable can be found on PATH.
+
+    This check is intended to be called from the CLI before starting the proxy,
+    not during config loading. This avoids breaking tests that load configs
+    in environments where Kiro is not installed.
+
+    Args:
+        config: A validated BenchmarkConfig instance.
+
+    Raises:
+        SystemExit: If the Kiro executable is not found on PATH.
+    """
+    kiro_path = config.automation.kiro_path
+    if shutil.which(kiro_path) is None:
+        print(
+            f"Error: Kiro executable '{kiro_path}' not found on PATH. "
+            f"Set 'automation.kiro_path' in the config file."
         )
         raise SystemExit(1)

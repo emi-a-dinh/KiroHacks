@@ -1,11 +1,11 @@
 """Tests for the orchestrator module.
 
 Tests the pure computation functions (compute_session_aggregate,
-compute_run_aggregate) and the Orchestrator.__init__ constructor.
-Interactive methods (run_single, run_benchmark) are not tested here
-as they require user input.
+compute_run_aggregate), the Orchestrator.__init__ constructor, and
+the _build_turn_record helper.
 """
 
+from benchmark.automation_driver import AutomationDriver, PowerManager
 from benchmark.models import (
     BenchmarkConfig,
     SessionRecord,
@@ -161,9 +161,21 @@ class TestOrchestratorInit:
         assert orch.script is script
         assert orch.proxy is proxy
         assert orch.config is config
-        assert orch._jsonl_position == 0
 
-    def test_initial_jsonl_position_is_zero(self):
+    def test_creates_automation_driver(self):
+        script = SessionScript(
+            generated_at="2025-01-01T00:00:00Z",
+            repo_path="example_project",
+            sessions=[],
+        )
+        proxy = ProxyManager(port=8080, jsonl_path="/tmp/test.jsonl")
+        config = BenchmarkConfig(repo_path="example_project")
+
+        orch = Orchestrator(script=script, proxy=proxy, config=config)
+
+        assert isinstance(orch._automation_driver, AutomationDriver)
+
+    def test_creates_power_manager(self):
         script = SessionScript(
             generated_at="2025-01-01T00:00:00Z",
             repo_path="example_project",
@@ -174,4 +186,4 @@ class TestOrchestratorInit:
 
         orch = Orchestrator(script=script, proxy=proxy, config=config)
 
-        assert orch._jsonl_position == 0
+        assert isinstance(orch._power_manager, PowerManager)

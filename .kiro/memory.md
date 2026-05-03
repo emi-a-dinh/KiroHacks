@@ -167,3 +167,15 @@
 **Issues encountered:** None.
 
 **Open items:** Task list (tasks.md) still needs to be created. An empty tasks.md was generated but has no content yet.
+
+## 2026-05-02 — Automated benchmark testing task list
+
+**What changed:**
+- `.kiro/specs/automated-benchmark-testing/tasks.md` — new implementation plan with 13 top-level tasks, covering data models, config, PowerManager, PromptSender, ResponseWatcher, AutomationDriver, Orchestrator refactor, CLI wiring, integration tests, and 4 checkpoints
+- `.kiro/memory.md` — appended session summary
+
+**Decisions made:** Tasks ordered by dependency: models first, then individual components (PowerManager, PromptSender, ResponseWatcher), then AutomationDriver that composes them, then Orchestrator refactor, then CLI wiring. Checkpoints after each major phase. All 12 property tests marked optional (`*`) for faster MVP path.
+
+**Issues encountered:** None.
+
+**Open items:** Full spec is complete (requirements → design → tasks). Ready to begin task execution starting with Task 1.

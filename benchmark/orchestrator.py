@@ -1,21 +1,23 @@
 """Run orchestrator for the AI IDE Token Benchmark.
 
-Drives the benchmark flow: baseline run → treatment run. Displays current
-session/turn to the user via rich terminal UI, waits for user input, and
-reads token data from the proxy's JSONL output after each turn.
+Drives the benchmark flow: baseline run → treatment run. Uses the
+AutomationDriver to launch Kiro, deliver prompts, and detect responses
+automatically. Uses the PowerManager to toggle the token-miser Power
+between baseline (disabled) and treatment (enabled) runs.
 """
 
 from __future__ import annotations
 
-import time
+import logging
 from datetime import datetime, timezone
 from typing import List, Tuple
 
 from rich.console import Console
-from rich.panel import Panel
 
+from benchmark.automation_driver import AutomationDriver, PowerManager
 from benchmark.models import (
     BenchmarkConfig,
+    BenchmarkError,
     RunRecord,
     SessionRecord,
     SessionScript,
@@ -23,9 +25,11 @@ from benchmark.models import (
     TurnRecord,
 )
 from benchmark.proxy import ProxyManager
+from benchmark.reporter import write_token_report
 
 
 console = Console()
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -73,6 +77,9 @@ def compute_run_aggregate(sessions: List[SessionRecord]) -> TokenCount:
 class Orchestrator:
     """Drives the benchmark flow through baseline and treatment runs.
 
+    Uses AutomationDriver for prompt delivery and response detection,
+    and PowerManager for toggling the token-miser Power between runs.
+
     Args:
         script: The session script containing all sessions and turns.
         proxy: The proxy manager for reading captured token data.
@@ -88,19 +95,20 @@ class Orchestrator:
         self.script = script
         self.proxy = proxy
         self.config = config
-        self._jsonl_position: int = 0  # tracks read position in JSONL file
+        self._automation_driver = AutomationDriver(proxy, config)
+        self._power_manager = PowerManager(config.repo_path)
 
     # -------------------------------------------------------------------
     # 5.2 / 5.5  run_single
     # -------------------------------------------------------------------
 
     def run_single(self, run_type: str) -> RunRecord:
-        """Guide the user through all sessions/turns for one run condition.
+        """Execute all sessions/turns for one run condition automatically.
 
-        For each session, displays the session header and each turn prompt
-        in a rich Panel. After the user presses Enter (signalling Kiro has
-        responded), reads new JSONL entries from the proxy and builds a
-        TurnRecord from the captured token data.
+        For each session, sends each turn's prompt via the AutomationDriver,
+        which delivers it to Kiro's stdin and waits for the response by
+        monitoring the proxy JSONL file. Builds TurnRecords from the
+        captured token data.
 
         Args:
             run_type: Either "baseline" or "treatment".
@@ -122,32 +130,33 @@ class Orchestrator:
             turn_records: List[TurnRecord] = []
 
             for turn in session.turns:
-                # Display the turn prompt in a rich Panel
-                console.print(
-                    Panel(
-                        turn.prompt,
-                        title=f"[bold]Turn {turn.turn_number} — {turn.role}[/bold]",
-                        border_style="green",
+                # Send prompt via AutomationDriver and wait for response
+                entries, timed_out = self._automation_driver.run_turn(
+                    turn.prompt,
+                    run_type,
+                    turn.role,
+                    session.session_id,
+                    turn.turn_number,
+                )
+
+                if timed_out:
+                    console.print(
+                        f"[yellow]⚠ Turn {turn.turn_number} timed out "
+                        f"(session {session.session_id})[/yellow]"
                     )
-                )
-
-                # Wait for the user to signal Kiro has responded
-                console.print(
-                    "[dim]Press Enter after Kiro responds...[/dim]"
-                )
-                input()
-
-                # 5.5 — Brief pause to let proxy flush, then read new entries
-                time.sleep(0.5)
-                new_entries, self._jsonl_position = self.proxy.read_new_entries(
-                    self._jsonl_position
-                )
 
                 # Process entries into a TurnRecord
                 turn_record = self._build_turn_record(
-                    session.session_id, turn.turn_number, new_entries
+                    session.session_id, turn.turn_number, entries
                 )
                 turn_records.append(turn_record)
+
+                # Progress line after each turn
+                console.print(
+                    f"  [{run_type}] Session {session.session_id}, "
+                    f"Turn {turn.turn_number}: "
+                    f"{turn_record.tokens.total_tokens} tokens"
+                )
 
             # Compute session aggregate
             session_aggregate = compute_session_aggregate(turn_records)
@@ -159,25 +168,25 @@ class Orchestrator:
             )
             session_records.append(session_record)
 
-            # 5.3 — Session boundary: instruct user to start a new chat
+            # Session summary line
+            console.print(
+                f"  Session {session.session_id} total: "
+                f"{session_aggregate.total_tokens} tokens"
+            )
+
+            # Start new conversation between sessions (not after the last one)
             if sess_idx < len(self.script.sessions) - 1:
-                console.print()
-                console.print(
-                    "═══════════════════════════════════════════════════"
-                )
-                console.print(
-                    "  Start a [bold]NEW[/bold] conversation in Kiro for the next session."
-                )
-                console.print(
-                    "  Press Enter when ready..."
-                )
-                console.print(
-                    "═══════════════════════════════════════════════════"
-                )
-                input()
+                self._automation_driver.new_conversation()
 
         # Compute run aggregate
         run_aggregate = compute_run_aggregate(session_records)
+
+        # Run total line
+        console.print()
+        console.print(
+            f"[bold]{run_type.capitalize()} run total: "
+            f"{run_aggregate.total_tokens} tokens[/bold]"
+        )
 
         return RunRecord(
             run_type=run_type,
@@ -192,33 +201,88 @@ class Orchestrator:
     # -------------------------------------------------------------------
 
     def run_benchmark(self) -> Tuple[RunRecord, RunRecord]:
-        """Orchestrate baseline then treatment runs.
+        """Orchestrate baseline then treatment runs automatically.
 
-        Prints condition setup prompts and waits for user confirmation
-        before each run.
+        Manages the full lifecycle:
+        1. Backs up Power state
+        2. Disables Power, runs baseline
+        3. Enables Power, runs treatment
+        4. Restores Power state (guaranteed via finally)
 
         Returns:
             A tuple of (baseline_record, treatment_record).
+
+        Raises:
+            BenchmarkError: If the benchmark cannot complete due to
+                unrecoverable errors (Kiro failures, max restarts, etc.).
         """
-        # Baseline instructions
-        console.print()
-        console.print("[bold]BASELINE RUN[/bold]")
-        console.print("Ensure NO Powers are active in Kiro.")
-        console.print("Press Enter to begin the baseline run...")
-        input()
+        self._power_manager.backup()
 
-        baseline = self.run_single("baseline")
+        # Log resolved automation config
+        auto_cfg = self.config.automation
+        logger.info(
+            "Automation config: kiro_path=%s, idle_timeout=%d, "
+            "turn_timeout=%d, startup_timeout=%d",
+            auto_cfg.kiro_path,
+            auto_cfg.idle_timeout,
+            auto_cfg.turn_timeout,
+            auto_cfg.startup_timeout,
+        )
 
-        # Treatment instructions
-        console.print()
-        console.print("[bold]TREATMENT RUN[/bold]")
-        console.print("Activate the Context Lens Power in Kiro.")
-        console.print("Press Enter to begin the treatment run...")
-        input()
+        baseline = None
+        treatment = None
+        try:
+            # --- Baseline run ---
+            console.print()
+            console.print("[bold]BASELINE RUN[/bold] (Power disabled)")
+            self._power_manager.disable_power()
+            self._automation_driver.start_kiro()
+            self._automation_driver.reset_restart_count()
+            baseline = self.run_single("baseline")
+            self._automation_driver.stop_kiro()
 
-        treatment = self.run_single("treatment")
+            # --- Treatment run ---
+            console.print()
+            console.print("[bold]TREATMENT RUN[/bold] (Power enabled)")
+            self._power_manager.enable_power()
+            self._automation_driver.start_kiro()
+            self._automation_driver.reset_restart_count()
+            treatment = self.run_single("treatment")
+            self._automation_driver.stop_kiro()
 
-        return baseline, treatment
+            return baseline, treatment
+
+        except BenchmarkError:
+            # Write partial reports if available
+            if baseline is not None:
+                try:
+                    write_token_report(
+                        baseline,
+                        self.config.output_dir,
+                        self.config.output_format,
+                    )
+                    console.print(
+                        "[yellow]Partial baseline report written.[/yellow]"
+                    )
+                except Exception:
+                    logger.exception("Failed to write partial baseline report")
+            if treatment is not None:
+                try:
+                    write_token_report(
+                        treatment,
+                        self.config.output_dir,
+                        self.config.output_format,
+                    )
+                    console.print(
+                        "[yellow]Partial treatment report written.[/yellow]"
+                    )
+                except Exception:
+                    logger.exception("Failed to write partial treatment report")
+            raise
+
+        finally:
+            self._automation_driver.stop_kiro()
+            self._power_manager.restore()
 
     # -------------------------------------------------------------------
     # Internal helpers
