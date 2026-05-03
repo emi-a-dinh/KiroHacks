@@ -468,3 +468,15 @@
 - Treatment Session 1 alone cost 7,872 mc (40 calls) vs baseline Session 1 at 600 mc (13 calls) — the Power's indexing/querying overhead dominates.
 - Credit cost metric won't favor the Power on Flask-sized projects. For the hackathon writeup, focus on qualitative accuracy (did the Power find the right fix?) rather than token reduction.
 - Could also frame it as: "the Power trades cost for precision — it spends more tokens but on the right files."
+
+## 2026-05-02 — Hackathon writeup responses
+
+**What changed:**
+- `WRITEUP_RESPONSES.md` — new file with detailed responses to all 5 hackathon prompts (vibe coding, agent hooks, spec-driven development, steering docs, MCP)
+- `.kiro/memory.md` — appended session summary
+
+**Decisions made:** Structured each response around the specific sub-questions in the prompts. Drew from the full project history in memory.md, the specs, hooks, steering files, and benchmark results to provide concrete examples rather than generic answers. Included honest assessment of benchmark results (Power costs more on small projects but provides better precision).
+
+**Issues encountered:** None — read-only analysis of existing project artifacts followed by writeup generation.
+
+**Open items:** The writeup is in `WRITEUP_RESPONSES.md` as a standalone file. User may want to merge portions into `WRITEUP.md` or format differently for submission.
