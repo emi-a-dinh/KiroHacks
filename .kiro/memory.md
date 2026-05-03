@@ -336,3 +336,17 @@
 **Issues encountered:** Auto-prompter showed "Sending prompt" and "Waiting for response" but nothing appeared in Kiro's chat. Root cause: `keystroke` with 312-char text containing backticks and quotes was silently failing.
 
 **Open items:** User is retesting with the clipboard approach. Need to verify Kiro's chat input is focused when the paste happens.
+
+## 2026-05-02 — Trim benchmark to 3 issues
+
+**What changed:**
+- `flask_project/ISSUES.md` — trimmed from 10 issues to 3 (async coroutine symptom, ensure_sync bypass diagnosis, direct fix request)
+- `flask_project/.kiro/` — removed Kiro workspace files created during testing
+- `benchmark_output/tokens.jsonl` — cleared old data
+- `benchmark_output/session_script.json` — regenerated: 3 sessions, 12 turns
+
+**Decisions made:** 40 turns per run was too slow for iterating. 3 issues × 4 turns = 12 prompts per run (24 total for baseline + treatment) is much more manageable. Kept the three most representative issues: symptom description, root cause diagnosis, and direct fix.
+
+**Issues encountered:** None.
+
+**Open items:** User is retesting with the trimmed benchmark. Flask project reset to clean state with bug intact.
