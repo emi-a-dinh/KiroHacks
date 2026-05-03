@@ -257,3 +257,14 @@
 **Issues encountered:** Kiro showed "Unable to fetch account usage data: Failed to establish a socket connection to proxies" and MCP server connection failure (-32000). Root cause: proxy env vars cause ALL Kiro connections (including local MCP server) to route through the proxy. Fix: `NO_PROXY` env var for treatment runs. For baseline runs, the MCP failure is expected since the Power should be disabled anyway.
 
 **Open items:** User needs to test the corrected launch command with `NO_PROXY` and `127.0.0.1`. For baseline run, manually disable token-miser in mcp.json and rename steering file. The automation driver should be updated to include `NO_PROXY` in the env vars it sets.
+
+## 2026-05-02 — Proxy port conflict during benchmark setup
+
+**What changed:**
+- `.kiro/memory.md` — appended session summary
+
+**Decisions made:** None — this was a quick troubleshooting session.
+
+**Issues encountered:** User started mitmdump without `BENCHMARK_JSONL_PATH`, then hit Ctrl+Z (suspend) instead of Ctrl+C (kill) when trying to restart. The suspended process held port 8080, causing "address already in use" on the second attempt. Fix: `kill %1` to kill the suspended job, then restart with the env var.
+
+**Open items:** User still needs to complete the full proxy + Kiro launch sequence and run the benchmark. The corrected Terminal 1 command includes `BENCHMARK_JSONL_PATH` inline.
