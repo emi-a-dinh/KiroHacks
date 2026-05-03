@@ -303,3 +303,14 @@
 **Issues encountered:** User expected prompts to type automatically after launching Kiro. Clarified that the automation driver's stdin approach is not compatible with Kiro's GUI and the current setup requires manual prompt pasting.
 
 **Open items:** Build an AppleScript-based prompt sender to automate typing into Kiro's chat window on macOS. This would replace the stdin approach in the automation driver and make the 80-prompt benchmark run feasible without manual intervention.
+
+## 2026-05-02 — AppleScript auto-prompter for benchmark
+
+**What changed:**
+- `benchmark/auto_prompter.py` — new script that uses `osascript` to type prompts into Kiro's chat window via AppleScript keystrokes. Monitors JSONL file for idle timeout to detect response completion. Supports baseline (verbatim) and treatment (miser-* prefixed) runs. Starts new conversations between sessions via Cmd+N.
+
+**Decisions made:** Used AppleScript `keystroke` via `osascript` instead of stdin because Kiro is an Electron GUI app. The script activates Kiro's window, types the prompt, presses Return, then polls the JSONL file size for idle detection. 5-second startup delay gives user time to ensure Kiro is visible.
+
+**Issues encountered:** None — verified `osascript` works and accessibility permissions are granted (System Events returned "Electron" as frontmost app).
+
+**Open items:** Test the auto-prompter with a real benchmark run. May need to handle special characters in prompts (backticks, quotes) that could break AppleScript keystroke. The `Cmd+N` shortcut for new conversation needs verification — might be a different shortcut in Kiro.
