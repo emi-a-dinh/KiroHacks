@@ -179,3 +179,20 @@
 **Issues encountered:** None.
 
 **Open items:** Full spec is complete (requirements → design → tasks). Ready to begin task execution starting with Task 1.
+
+## 2026-05-02 — Implement automated benchmark testing
+
+**What changed:**
+- `benchmark/automation_driver.py` — new module with 4 classes: PowerManager (mcp.json + steering file toggle), PromptSender (verbatim baseline / prefixed treatment delivery), ResponseWatcher (JSONL idle timeout polling), AutomationDriver (Kiro subprocess lifecycle, restart logic)
+- `benchmark/models.py` — added AutomationConfig, WatchResult, BenchmarkError, DEFAULT_PREFIX_MAP; extended BenchmarkConfig with automation field
+- `benchmark/config.py` — added automation section validation and validate_kiro_executable()
+- `benchmark/orchestrator.py` — replaced manual input() loops with AutomationDriver; added PowerManager lifecycle with try/finally cleanup
+- `benchmark/cli.py` — wired kiro_path validation and BenchmarkError handling; removed manual proxy instructions
+- `tests/test_config.py` — 16 new tests for automation config validation
+- `tests/test_orchestrator.py` — updated init tests for new AutomationDriver/PowerManager attributes
+
+**Decisions made:** Prompts delivered via subprocess stdin. Response detection via JSONL idle polling (1s interval). Power toggling via mcp.json disabled flag + steering file rename. New conversations by restarting Kiro process. 3 consecutive zero-entry timeouts trigger restart, max 2 restarts per run.
+
+**Issues encountered:** None — implementation followed the design doc closely.
+
+**Open items:** Optional property-based tests (tasks marked *) not yet implemented. Should test with a real Kiro instance to validate stdin prompt delivery works as expected.

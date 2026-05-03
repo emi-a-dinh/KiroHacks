@@ -343,7 +343,7 @@ class TestConfigRoundTrip:
     def test_load_example_config_file(self):
         """Verify the example benchmark_config.yaml loads correctly."""
         config = load_config("benchmark_config.yaml")
-        assert config.repo_path == "example_project"
+        assert config.repo_path == "flask_project"
         assert config.prompt_file == "benchmark_output/session_script.json"
         assert config.output_dir == "benchmark_output"
         assert config.output_format == "json"
