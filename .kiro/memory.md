@@ -155,3 +155,15 @@
 **Issues encountered:** None — design phase was straightforward given the clear requirements.
 
 **Open items:** Task list (tasks.md) is next. The `__pycache__` and index DB files are still tracked by git and showing as modified — still need `git rm --cached`.
+
+## 2026-05-02 — Treatment prompt prefixing for benchmark spec
+
+**What changed:**
+- `.kiro/specs/automated-benchmark-testing/requirements.md` — added Requirement 10 (Treatment Prompt Prefixing) with 6 acceptance criteria; updated Req 4 to distinguish baseline (verbatim) vs treatment (prefixed); added MCP_Tool_Prefix and Treatment_Prefix_Map to glossary
+- `.kiro/specs/automated-benchmark-testing/design.md` — updated PromptSender with `_apply_prefix()` and configurable prefix map; extended AutomationConfig with `treatment_prefix_map`; added Properties 11-12 and 6 new unit tests
+
+**Decisions made:** Default prefix mapping: task_description→miser-plan, clarifying_question→miser-ask, implementation→miser-fix, verification→miser-ask. Map is configurable in YAML config. Prefix is prepended as space-separated string to mirror how a user would type it in Kiro chat.
+
+**Issues encountered:** None.
+
+**Open items:** Task list (tasks.md) still needs to be created. An empty tasks.md was generated but has no content yet.
