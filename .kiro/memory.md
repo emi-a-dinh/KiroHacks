@@ -350,3 +350,15 @@
 **Issues encountered:** None.
 
 **Open items:** User is retesting with the trimmed benchmark. Flask project reset to clean state with bug intact.
+
+## 2026-05-02 — Reduce benchmark to 6 total prompts
+
+**What changed:**
+- `benchmark_output/session_script.json` — hand-crafted with 3 sessions × 1 turn each (not tracked in git, lives in benchmark_output/)
+- `benchmark_output/tokens.jsonl` — cleared for fresh run
+
+**Decisions made:** User wanted 3 prompts per run (6 total), not 3 issues × 4 turns. Hand-wrote the session script with single-turn sessions instead of using the generator (which always produces 4 turns per session). Each session has one `task_description` prompt targeting the async bug from a different angle.
+
+**Issues encountered:** None.
+
+**Open items:** User is running the 3-prompt baseline. After baseline, need to re-enable Power, reset flask_project, and run 3-prompt treatment with miser-plan prefixes.
