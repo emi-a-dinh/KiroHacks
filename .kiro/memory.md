@@ -246,3 +246,14 @@
 **Issues encountered:** User tried `curl localhost:8080` and got connection refused — the proxy wasn't running because the automated `benchmark run` command failed at the kiro_path validation step before starting the proxy. Walked through the two-terminal manual setup instead.
 
 **Open items:** Need to build an AppleScript-based (or similar) prompt sender to replace stdin delivery for macOS. This would use `osascript` to type prompts into Kiro's chat window programmatically. The rest of the automation (proxy, power management, response detection, reporting) works fine — only the prompt delivery mechanism needs changing.
+
+## 2026-05-02 — Proxy and MCP connection troubleshooting
+
+**What changed:**
+- `.kiro/memory.md` — appended session summary
+
+**Decisions made:** Two fixes identified for Kiro proxy setup: (1) use `127.0.0.1` instead of `localhost` in proxy env vars for Kiro, (2) add `NO_PROXY=localhost,127.0.0.1` so the MCP server's local connections bypass the proxy while AWS API calls still route through it.
+
+**Issues encountered:** Kiro showed "Unable to fetch account usage data: Failed to establish a socket connection to proxies" and MCP server connection failure (-32000). Root cause: proxy env vars cause ALL Kiro connections (including local MCP server) to route through the proxy. Fix: `NO_PROXY` env var for treatment runs. For baseline runs, the MCP failure is expected since the Power should be disabled anyway.
+
+**Open items:** User needs to test the corrected launch command with `NO_PROXY` and `127.0.0.1`. For baseline run, manually disable token-miser in mcp.json and rename steering file. The automation driver should be updated to include `NO_PROXY` in the env vars it sets.
